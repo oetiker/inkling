@@ -12,23 +12,23 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 	 * @typedef {{ node: Window | Element, left: number, top: number }} ScrollSnapshot
 	 */
 
-	const PROTOCOL_VERSION = 'harper-gdocs-bridge/v1';
-	const BRIDGE_ID = 'harper-google-docs-main-world-bridge';
+	const PROTOCOL_VERSION = 'inkling-gdocs-bridge/v1';
+	const BRIDGE_ID = 'inkling-google-docs-main-world-bridge';
 	const POLL_INTERVAL_MS = 125;
 	const EDITOR_SELECTOR = '.kix-appview-editor';
 	const EDITOR_CONTAINER_SELECTOR = '.kix-appview-editor-container';
 	const DOCS_EDITOR_SELECTOR = '#docs-editor';
 	const CARET_SELECTOR = '.kix-cursor-caret';
 	const TEXT_EVENT_IFRAME_SELECTOR = '.docs-texteventtarget-iframe';
-	const LAYOUT_EPOCH_ATTR = 'data-harper-layout-epoch';
-	const LAYOUT_REASON_ATTR = 'data-harper-layout-reason';
-	const SELECTION_START_ATTR = 'data-harper-selection-start';
-	const SELECTION_END_ATTR = 'data-harper-selection-end';
-	const EVENT_NOTIFICATION = 'harper:gdocs:notification';
-	const EVENT_TEXT_UPDATED = 'harper:gdocs:text-updated';
-	const EVENT_LAYOUT_CHANGED = 'harper:gdocs:layout-changed';
-	const EVENT_GET_RECTS = 'harper:gdocs:get-rects';
-	const EVENT_REPLACE = 'harper:gdocs:replace';
+	const LAYOUT_EPOCH_ATTR = 'data-inkling-layout-epoch';
+	const LAYOUT_REASON_ATTR = 'data-inkling-layout-reason';
+	const SELECTION_START_ATTR = 'data-inkling-selection-start';
+	const SELECTION_END_ATTR = 'data-inkling-selection-end';
+	const EVENT_NOTIFICATION = 'inkling:gdocs:notification';
+	const EVENT_TEXT_UPDATED = 'inkling:gdocs:text-updated';
+	const EVENT_LAYOUT_CHANGED = 'inkling:gdocs:layout-changed';
+	const EVENT_GET_RECTS = 'inkling:gdocs:get-rects';
+	const EVENT_REPLACE = 'inkling:gdocs:replace';
 	const CARET_DIRECTION_THRESHOLD = 20;
 	const CARET_CHOICE_STALE_MS = 1500;
 
@@ -168,7 +168,7 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 			}
 
 			currentAnnotated = annotated;
-			window.__harperGoogleDocsAnnotatedText = annotated;
+			window.__inklingGoogleDocsAnnotatedText = annotated;
 
 			const rawText = annotated.getText();
 			const normalizedText = normalizeGoogleDocsText(rawText);
@@ -656,7 +656,7 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 		}
 
 		currentAnnotated = annotated;
-		window.__harperGoogleDocsAnnotatedText = annotated;
+		window.__inklingGoogleDocsAnnotatedText = annotated;
 
 		const replacementText = String(request.replacementText ?? '');
 		const rawText = annotated.getText?.() ?? '';
@@ -733,7 +733,7 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 
 		void handleGetRectsRequest(detail).then((response) => {
 			ensureBridgeNode().setAttribute(
-				`data-harper-rects-${requestId}`,
+				`data-inkling-rects-${requestId}`,
 				JSON.stringify(response.rects),
 			);
 		});

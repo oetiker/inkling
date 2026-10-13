@@ -41,7 +41,7 @@ export default class Highlights {
 
 	/** Used for CSS highlight API */
 	private insertHighlightStyle(tag: string, lint: UnpackedLint) {
-		const styleId = `harper-highlight-style-${lint.lint_kind}`;
+		const styleId = `inkling-highlight-style-${lint.lint_kind}`;
 		if (document.getElementById(styleId)) return;
 
 		// ::highlight() accepts no border-radius, so the CSS highlight is a plain marker fill.
@@ -74,7 +74,7 @@ export default class Highlights {
 					highlight.add(box.range);
 				} else {
 					highlight = new Highlight();
-					const tag = `harper-${box.lint.lint_kind}`;
+					const tag = `inkling-${box.lint.lint_kind}`;
 					CSS.highlights.set(tag, highlight);
 					this.insertHighlightStyle(tag, box.lint);
 					highlight.add(box.range);
@@ -120,7 +120,7 @@ export default class Highlights {
 			const renderBox = this.renderBoxes.get(source)!;
 
 			const host = renderBox.getShadowHost();
-			host.id = 'harper-highlight-host';
+			host.id = 'inkling-highlight-host';
 			const isGoogleDocs = isGoogleDocsSource(source);
 
 			if (applyGoogleDocsRenderHostStyle(host, source)) {
@@ -209,7 +209,7 @@ export default class Highlights {
 						borderRadius: '3px',
 						backgroundColor: lintKindFill(box.lint.lint_kind),
 					},
-					id: 'harper-highlight',
+					id: 'inkling-highlight',
 				},
 				[],
 			);
@@ -333,8 +333,8 @@ function isContainingBlock(el: Element): boolean {
 export function supportsCustomHighlights() {
 	const root = globalThis.document?.documentElement;
 	const disableFlag =
-		root?.getAttribute?.('data-harper-disable-css-highlights') === 'true' ||
-		root?.dataset?.harperDisableCssHighlights === 'true';
+		root?.getAttribute?.('data-inkling-disable-css-highlights') === 'true' ||
+		root?.dataset?.inklingDisableCssHighlights === 'true';
 	if (disableFlag) {
 		return false;
 	}

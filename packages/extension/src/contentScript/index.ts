@@ -37,7 +37,7 @@ const keepAliveCallback = () => {
 keepAliveCallback();
 
 /**
- * Returns the reasons Harper should skip this textarea while scanning for targets.
+ * Returns the reasons Inkling should skip this textarea while scanning for targets.
  * An empty array means the textarea is eligible to be added.
  */
 function getTextareaReasons(element: HTMLTextAreaElement, requireVisible: boolean): string[] {

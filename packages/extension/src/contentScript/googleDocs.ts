@@ -12,15 +12,15 @@ import {
 
 declare global {
 	interface Window {
-		__harperGoogleDocsBridgeClient?: GoogleDocsBridgeClient;
+		__inklingGoogleDocsBridgeClient?: GoogleDocsBridgeClient;
 	}
 }
 
-const GOOGLE_DOCS_TARGET_ID = 'harper-google-docs-target';
-const GOOGLE_DOCS_MAIN_WORLD_BRIDGE_ID = 'harper-google-docs-main-world-bridge';
+const GOOGLE_DOCS_TARGET_ID = 'inkling-google-docs-target';
+const GOOGLE_DOCS_MAIN_WORLD_BRIDGE_ID = 'inkling-google-docs-main-world-bridge';
 const GOOGLE_DOCS_EDITOR_SELECTOR = '.kix-appview-editor';
 const GOOGLE_DOCS_RECT_SELECTOR = 'rect[aria-label]';
-const GOOGLE_DOCS_SYNCING_ATTR = 'data-harper-gdocs-syncing';
+const GOOGLE_DOCS_SYNCING_ATTR = 'data-inkling-gdocs-syncing';
 const GOOGLE_DOCS_IGNORED_LAYOUT_REASONS = new Set(['scroll', 'wheel', 'key-scroll']);
 const GOOGLE_DOCS_MIN_PARAGRAPH_BREAK_GAP_PX = 6;
 const GOOGLE_DOCS_PARAGRAPH_BREAK_RATIO = 0.5;
@@ -64,7 +64,7 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 		if (!(target instanceof HTMLElement)) {
 			target = document.createElement('div');
 			target.id = GOOGLE_DOCS_TARGET_ID;
-			target.setAttribute('data-harper-google-docs-target', 'true');
+			target.setAttribute('data-inkling-google-docs-target', 'true');
 			target.setAttribute('aria-hidden', 'true');
 			target.setAttribute('contenteditable', 'false');
 			target.setAttribute('data-language', 'plaintext');
@@ -110,7 +110,7 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 		}
 
 		bridgeClient = new GoogleDocsBridgeClient(document);
-		window.__harperGoogleDocsBridgeClient = bridgeClient;
+		window.__inklingGoogleDocsBridgeClient = bridgeClient;
 
 		bridgeClient.onTextUpdated(() => {
 			void syncGoogleDocsBridge();
@@ -126,7 +126,7 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 	function disposeBridgeClient() {
 		bridgeClient?.dispose();
 		bridgeClient = null;
-		delete window.__harperGoogleDocsBridgeClient;
+		delete window.__inklingGoogleDocsBridgeClient;
 	}
 
 	function addSignatureToken(hash: number, token: string): number {
@@ -511,8 +511,8 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 		}
 
 		target.replaceChildren(snapshot.fragment);
-		target.setAttribute('data-harper-gdocs-source', snapshot.source);
-		target.setAttribute('data-harper-gdocs-segments', String(snapshot.segmentCount));
+		target.setAttribute('data-inkling-gdocs-source', snapshot.source);
+		target.setAttribute('data-inkling-gdocs-segments', String(snapshot.segmentCount));
 		lastCloneSignature = snapshot.signature;
 		return true;
 	}

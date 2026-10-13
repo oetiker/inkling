@@ -45,7 +45,7 @@ test('Highlights a mistake reported by the server and applies its suggestion', a
 	const textarea = page.locator('textarea');
 	await textarea.fill('Das ist ein Tset.');
 
-	const highlight = page.locator('#harper-highlight').first();
+	const highlight = page.locator('#inkling-highlight').first();
 	await highlight.waitFor({ state: 'visible', timeout: 30000 });
 	// Highlights let pointer events through to the editor, so click where the highlight is.
 	const box = await highlight.boundingBox();
@@ -71,7 +71,7 @@ async function markMistake(
 
 	const textarea = page.locator('textarea');
 	await textarea.fill('Das ist ein Tset.');
-	const highlight = page.locator('#harper-highlight').first();
+	const highlight = page.locator('#inkling-highlight').first();
 	await highlight.waitFor({ state: 'visible', timeout: 30000 });
 	const box = (await highlight.boundingBox())!;
 	return { textarea, highlight, x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -117,7 +117,7 @@ test('The close button ignores the mistake', async ({ browserName, context, page
 	await page.mouse.click(x, y);
 
 	await page.locator('.inkling-popup').getByRole('button', { name: 'Ignore' }).click();
-	await expect(page.locator('#harper-highlight')).toHaveCount(0);
+	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
 });
 
 test('Shows no highlights when no server is set', async ({ browserName, page }) => {
@@ -127,5 +127,5 @@ test('Shows no highlights when no server is set', async ({ browserName, page }) 
 	await page.locator('textarea').fill('Das ist ein Tset.');
 	await page.waitForTimeout(3000);
 
-	await expect(page.locator('#harper-highlight')).toHaveCount(0);
+	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
 });

@@ -157,7 +157,7 @@ export function isVisible(node: Node): boolean {
 
 			// Google Docs integration uses an off-screen bridge element that is intentionally
 			// hidden from users. Treat it as visible when its editor container is on-screen.
-			if (node.getAttribute('data-harper-google-docs-target') === 'true') {
+			if (node.getAttribute('data-inkling-google-docs-target') === 'true') {
 				const editor = node.closest('.kix-appview-editor') as HTMLElement | null;
 				if (!editor) return false;
 				return isBoxInScreen(editor.getBoundingClientRect());

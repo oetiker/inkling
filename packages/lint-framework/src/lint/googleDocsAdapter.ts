@@ -10,7 +10,7 @@ import { type Span, SuggestionKind } from './types';
 import type { UnpackedLint, UnpackedSpan, UnpackedSuggestion } from './unpackLint';
 
 const GOOGLE_DOCS_EDITOR_SELECTOR = '.kix-appview-editor';
-const GOOGLE_DOCS_SYNCING_ATTR = 'data-harper-gdocs-syncing';
+const GOOGLE_DOCS_SYNCING_ATTR = 'data-inkling-gdocs-syncing';
 
 /**
  * Returns Google Docs-specific lint boxes for the hidden bridge target.

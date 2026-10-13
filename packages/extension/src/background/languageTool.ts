@@ -44,7 +44,7 @@ type LanguageToolResponse = {
 	matches: LanguageToolMatch[];
 };
 
-/** Check `text` with a LanguageTool server and convert the matches into Harper's lint format. */
+/** Check `text` with a LanguageTool server and convert the matches into the lint framework's format. */
 export async function checkWithLanguageTool(
 	text: string,
 	options: LanguageToolCheckOptions,

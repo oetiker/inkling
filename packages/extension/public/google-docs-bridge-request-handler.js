@@ -8,9 +8,9 @@
  * @typedef {import('./google-docs-protocol.js').GoogleDocsResponseMessage} GoogleDocsResponseMessage
  */
 
-const PROTOCOL_VERSION = 'harper-gdocs-bridge/v1';
-const EVENT_REQUEST = 'harper:gdocs:request';
-const EVENT_RESPONSE = 'harper:gdocs:response';
+const PROTOCOL_VERSION = 'inkling-gdocs-bridge/v1';
+const EVENT_REQUEST = 'inkling:gdocs:request';
+const EVENT_RESPONSE = 'inkling:gdocs:response';
 
 /**
  * @callback GoogleDocsGetRectsRequestHandler

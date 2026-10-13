@@ -9,7 +9,6 @@
 		"ignoreUnknown": true,
 		"includes": [
 			"**/packages/**/*",
-			"**/harper-desktop/**/*",
 			"**/*.json",
 			"!**/.claude",
 			"!**/test-results",
@@ -22,7 +21,6 @@
 			"!**/temp",
 			"!**/*.zip",
 			"!**/*.rs",
-			"!**/harper-wasm/pkg",
 			"!**/.vscode-test",
 			"!**/.svelte-kit",
 			"!**/.sveltepress",

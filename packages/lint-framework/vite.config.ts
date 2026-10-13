@@ -12,7 +12,6 @@ export default defineConfig({
 		},
 		minify: true,
 		rollupOptions: {
-			external: ['harper.js'],
 			output: {
 				inlineDynamicImports: true,
 				minifyInternalExports: true,

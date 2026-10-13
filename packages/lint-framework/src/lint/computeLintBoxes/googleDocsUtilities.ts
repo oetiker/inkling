@@ -23,7 +23,7 @@ type GoogleDocsBridgeClientLike = {
 };
 
 type WindowWithGoogleDocsBridgeClient = Window & {
-	__harperGoogleDocsBridgeClient?: GoogleDocsBridgeClientLike;
+	__inklingGoogleDocsBridgeClient?: GoogleDocsBridgeClientLike;
 };
 
 let googleDocsMeasurementContext: CanvasRenderingContext2D | null | undefined;
@@ -220,10 +220,10 @@ export function resolveGoogleDocsSpan(
 }
 
 /**
- * Identifies Harper's hidden Google Docs bridge target element.
+ * Identifies Inkling's hidden Google Docs bridge target element.
  */
 export function isGoogleDocsTarget(el: HTMLElement): boolean {
-	return el.getAttribute('data-harper-google-docs-target') === 'true';
+	return el.getAttribute('data-inkling-google-docs-target') === 'true';
 }
 
 /**
@@ -325,7 +325,7 @@ export async function replaceGoogleDocsValue(
 		};
 
 		const bridgeClient = (window as WindowWithGoogleDocsBridgeClient)
-			.__harperGoogleDocsBridgeClient;
+			.__inklingGoogleDocsBridgeClient;
 		if (bridgeClient && typeof bridgeClient.replaceText === 'function') {
 			const applied = await bridgeClient.replaceText(
 				payload.start,

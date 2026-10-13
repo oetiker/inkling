@@ -1,7 +1,7 @@
-const PROTOCOL_VERSION = 'harper-gdocs-bridge/v1';
-const EVENT_REQUEST = 'harper:gdocs:request';
-const EVENT_RESPONSE = 'harper:gdocs:response';
-const EVENT_NOTIFICATION = 'harper:gdocs:notification';
+const PROTOCOL_VERSION = 'inkling-gdocs-bridge/v1';
+const EVENT_REQUEST = 'inkling:gdocs:request';
+const EVENT_RESPONSE = 'inkling:gdocs:response';
+const EVENT_NOTIFICATION = 'inkling:gdocs:notification';
 
 type GoogleDocsRect = {
 	x: number;

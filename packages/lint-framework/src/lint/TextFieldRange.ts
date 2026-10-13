@@ -60,7 +60,7 @@ export default class TextFieldRange {
 		}
 
 		const mirror = document.createElement('div');
-		mirror.className = 'harper-textfield-mirror';
+		mirror.className = 'inkling-textfield-mirror';
 
 		// Copy necessary computed styles from the field (affecting text layout)
 		const computed: CSSStyleDeclaration = window.getComputedStyle(field);
