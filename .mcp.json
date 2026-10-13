@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "shadcn-svelte": {
+      "command": "pnpm",
+      "args": ["dlx", "shadcn-svelte-mcp"]
+    }
+  }
+}
