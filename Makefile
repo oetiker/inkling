@@ -1,7 +1,7 @@
-# Build and test the browser extension. All work happens in packages/chrome-plugin;
+# Build and test the browser extension. All work happens in packages/extension;
 # the components and lint-framework packages are built first because it imports them.
 
-EXT := packages/chrome-plugin
+EXT := packages/extension
 # Playwright runs Chromium extensions only in headed mode; xvfb-run gives it a display.
 HEADED := xvfb-run -a
 

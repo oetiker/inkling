@@ -12,7 +12,7 @@
 			"**/harper-desktop/**/*",
 			"**/*.json",
 			"!**/test-results",
-			"!**/packages/chrome-plugin/tests/pages/**/*",
+			"!**/packages/extension/tests/pages/**/*",
 			"!**/node_modules",
 			"!**/mariadb_data",
 			"!**/dist",

@@ -4,23 +4,35 @@ Inkling is a Chrome and Firefox extension that checks what you type on web pages
 your own [LanguageTool](https://github.com/languagetool-org/languagetool)
 server. Text goes only to the server you configure.
 
-It is a fork of the browser extension of
-[Harper](https://github.com/Automattic/harper) (Apache-2.0), based on Harper
-commit `6bb9b661`. The fork keeps Harper's page integration (highlights,
-suggestion popup, editor support) and replaces Harper's built-in English
-checker with requests to a LanguageTool server. Everything else from the
+This project is not affiliated with LanguageTooler GmbH or with Automattic.
+
+## Built on Harper
+
+Inkling exists because of [Harper](https://github.com/Automattic/harper), the
+open-source grammar checker by Elijah Potter, its contributors and Automattic.
+Almost everything you see on a web page is their work: the highlights, the
+suggestion popup, the hotkeys, the per-site switch, and the editor support for
+plain text fields, Lexical, ProseMirror, Slate, Quill, Draft.js, iframes and
+Google Docs. Each of those editors needed its own careful work, and Harper's
+team published all of it under Apache-2.0, so others can build on it.
+
+Inkling is a fork of Harper's browser extension at commit `6bb9b661`. It
+replaces Harper's built-in checker with requests to a LanguageTool server, which
+adds German and the other LanguageTool languages. Everything else from the
 Harper repository was removed.
 
-This project is not affiliated with LanguageTooler GmbH or with Automattic.
+If you write in English, use Harper itself. It runs entirely in your browser,
+needs no server, and is fast:
+<https://writewithharper.com>.
 
 ## Install
 
 ```sh
-make chrome    # packages/chrome-plugin/package/inkling-chrome.zip
-make firefox   # packages/chrome-plugin/package/inkling-firefox.zip
+make chrome    # packages/extension/package/inkling-chrome.zip
+make firefox   # packages/extension/package/inkling-firefox.zip
 ```
 
-Load the unpacked `packages/chrome-plugin/build` directory in
+Load the unpacked `packages/extension/build` directory in
 `chrome://extensions` (developer mode), or the zip in `about:debugging` in
 Firefox.
 
@@ -55,7 +67,7 @@ make test        # unit tests plus Playwright tests in Chromium and Firefox
 ```
 
 The Playwright tests run headed under `xvfb-run` against a stand-in server in
-`packages/chrome-plugin/tests/mockLanguageTool.mjs`. Set `LT_TEST_SERVER` to run
+`packages/extension/tests/mockLanguageTool.mjs`. Set `LT_TEST_SERVER` to run
 the Chromium test against a real server.
 
 ## License
