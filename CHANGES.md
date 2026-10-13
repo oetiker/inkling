@@ -1,4 +1,4 @@
-- The Inkling icon is now a yellow chisel-tip highlighter in place of the reading glasses, in the toolbar, the extensions list, the popup and the settings page. The toolbar gets real 16 and 32 pixel versions, so the icon stays sharp.
+- The Inkling icon is now a blue and yellow chisel-tip highlighter in place of the reading glasses, in the toolbar, the extensions list, the popup and the settings page. The toolbar gets real 16 and 32 pixel versions, so the icon stays sharp and readable on dark toolbars.
 - New: suggestions in web pages now come from a LanguageTool server set under `Server URL` in the settings, so German and the other LanguageTool languages are checked. Harper's built-in English checker is gone.
 - New settings `Preferred Variants` (for example `de-CH`), `Disabled Rules` and a `Clear` button for ignored suggestions. "Disable rule" in a suggestion now disables the LanguageTool rule.
 - The extension no longer contacts writewithharper.com: the version check, the site and lint feedback forms, the review banner and the install and uninstall pages are removed.
