@@ -1,1 +1,0 @@
-ALTER TABLE `problematic_lint` ADD `rule_id` text;

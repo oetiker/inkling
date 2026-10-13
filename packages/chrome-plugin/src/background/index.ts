@@ -1,74 +1,42 @@
-import {
-	createBinaryModuleFromUrl,
-	type Dialect,
-	type LintConfig,
-	LocalLinter,
-	unpackWeirpackBytes,
-} from 'harper.js';
-import { type UnpackedLintGroups, unpackLint } from 'lint-framework';
-import type { PopupState } from '../PopupState';
+import type { UnpackedLintGroups } from 'lint-framework';
 import {
 	ActivationKey,
 	type AddToUserDictionaryRequest,
-	type AddWeirpackRequest,
 	createUnitResponse,
 	type GetActivationKeyResponse,
-	type GetConfigRequest,
-	type GetConfigResponse,
 	type GetDefaultStatusResponse,
-	type GetDelayRequest,
 	type GetDelayResponse,
-	type GetDialectRequest,
-	type GetDialectResponse,
+	type GetDisabledRulesResponse,
 	type GetDomainStatusRequest,
 	type GetDomainStatusResponse,
 	type GetEnabledDomainsResponse,
 	type GetHotkeyResponse,
-	type GetInstalledOnRequest,
-	type GetInstalledOnResponse,
-	type GetIsolateEnglishResponse,
-	type GetLintDescriptionsRequest,
-	type GetLintDescriptionsResponse,
-	type GetReviewedRequest,
-	type GetReviewedResponse,
-	type GetStructuredConfigResponse,
+	type GetServerSettingsResponse,
 	type GetUserDictionaryResponse,
-	type GetWeirpacksResponse,
 	type Hotkey,
 	type IgnoreLintRequest,
 	type LintRequest,
 	type LintResponse,
-	type OpenReportErrorRequest,
-	type PostFormDataRequest,
-	type PostFormDataResponse,
-	type RemoveWeirpackRequest,
 	type Request,
 	type Response,
+	type ServerSettings,
 	type SetActivationKeyRequest,
-	type SetConfigRequest,
 	type SetDefaultStatusRequest,
 	type SetDelayRequest,
-	type SetDialectRequest,
+	type SetDisabledRulesRequest,
 	type SetDomainStatusRequest,
 	type SetHotkeyRequest,
-	type SetIsolateEnglishRequest,
-	type SetReviewedRequest,
+	type SetRuleEnabledRequest,
+	type SetServerSettingsRequest,
 	type SetUserDictionaryRequest,
+	type TestServerRequest,
+	type TestServerResponse,
 	type UnitResponse,
-	type WeirpackMeta,
 } from '../protocol';
-import { detectBrowserDialect } from './detectDialect';
+import { checkWithLanguageTool, fetchServerVersion } from './languageTool';
 
-console.log('background is running');
-
-chrome.runtime.onInstalled.addListener((details) => {
-	if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-		chrome.runtime.setUninstallURL('https://writewithharper.com/uninstall-browser-extension');
-		chrome.tabs.create({
-			url: 'https://writewithharper.com/install-browser-extension',
-		});
-	}
-});
+/** Wait this long after typing stops before checking, unless the user picks another delay. */
+const DEFAULT_DELAY_MS = 500;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	handleRequest(request, sender).then(sendResponse);
@@ -76,45 +44,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	return true;
 });
 
-/** Read the current popup state and the tab that triggered it from storage. */
-async function getReportTabState() {
-	const result = await chrome.storage.local.get(['popupState', 'reportTabId']);
-	return {
-		popupPage: result.popupState?.page as string | undefined,
-		reportTabId: result.reportTabId as number | undefined,
-	};
-}
-
-/** Reset the popup back to the main page, clearing any in-progress report. */
-async function clearReportState(): Promise<void> {
-	await chrome.storage.local.set({ popupState: { page: 'main' } });
-}
-
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
-	const { popupPage, reportTabId } = await getReportTabState();
-	if (popupPage === 'report-error' && reportTabId !== tabId) {
-		await clearReportState();
-	}
-});
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-	if (!changeInfo.url) return;
-	const { popupPage, reportTabId } = await getReportTabState();
-	if (popupPage === 'report-error' && reportTabId === tabId) {
-		await clearReportState();
-	}
-});
-
-let linter: LocalLinter;
-const WEIRPACKS_KEY = 'weirpacks';
-const linterStorageKeys = [
-	'dialect',
-	'ignoredLints',
-	'lintConfig',
-	WEIRPACKS_KEY,
-	'userDictionary',
-];
-let linterHasPersistedState = false;
 const defaultEnabledDomains = [
 	'old.reddit.com',
 	'sh.reddit.com',
@@ -148,7 +77,6 @@ const defaultEnabledDomains = [
 	'hashnode.com',
 	'www.slatejs.org',
 	'localhost',
-	'writewithharper.com',
 	'prosemirror.net',
 	'draftjs.org',
 	'gitlab.com',
@@ -173,36 +101,6 @@ const defaultEnabledDomains = [
 ] as const;
 const defaultEnabledDomainSet = new Set<string>(defaultEnabledDomains);
 
-let linterReady = getDialect()
-	.then(setDialect)
-	.catch((err) => console.error('Failed to initialize linter:', err));
-setInstalledOnIfMissing();
-
-chrome.storage.onChanged.addListener((changes, areaName) => {
-	if (areaName !== 'local') {
-		return;
-	}
-
-	const resetLinter = linterStorageKeys.some((key) => {
-		const change = changes[key];
-		return change != null && change.oldValue !== undefined && change.newValue === undefined;
-	});
-
-	if (resetLinter) {
-		linterReady = linterReady
-			.then(async () => {
-				await initializeLinter(await getDialect());
-				linterHasPersistedState = false;
-			})
-			.catch((err) => console.error('Failed to reset linter:', err));
-	}
-});
-
-/** Await this function to "wait" for the linter to boot up. */
-async function ensureLinterReady() {
-	await linterReady;
-}
-
 async function enableDefaultDomains() {
 	for (const item of defaultEnabledDomains) {
 		if (!(await isDomainSet(item))) {
@@ -214,49 +112,45 @@ async function enableDefaultDomains() {
 enableDefaultDomains();
 
 function handleRequest(message: Request, sender?: chrome.runtime.MessageSender): Promise<Response> {
-	console.log(`Handling ${message.kind} request`);
-
 	switch (message.kind) {
 		case 'lint':
 			return handleLint(message, sender);
-		case 'getConfig':
-			return handleGetConfig(message);
-		case 'getStructuredConfig':
-			return handleGetStructuredConfig();
-		case 'setConfig':
-			return handleSetConfig(message);
-		case 'getLintDescriptions':
-			return handleGetLintDescriptions(message);
-		case 'setDialect':
-			return handleSetDialect(message);
-		case 'getDialect':
-			return handleGetDialect(message);
-		case 'getIsolateEnglish':
-			return handleGetIsolateEnglish();
-		case 'setIsolateEnglish':
-			return handleSetIsolateEnglish(message);
+		case 'getServerSettings':
+			return handleGetServerSettings();
+		case 'setServerSettings':
+			return handleSetServerSettings(message);
+		case 'testServer':
+			return handleTestServer(message);
+		case 'getDisabledRules':
+			return handleGetDisabledRules();
+		case 'setDisabledRules':
+			return handleSetDisabledRules(message);
+		case 'setRuleEnabled':
+			return handleSetRuleEnabled(message);
 		case 'getDelay':
-			return handleGetDelay(message);
+			return handleGetDelay();
 		case 'setDelay':
 			return handleSetDelay(message);
 		case 'getDomainStatus':
 			return handleGetDomainStatus(message);
 		case 'setDomainStatus':
 			return handleSetDomainStatus(message);
-		case 'addToUserDictionary':
-			return handleAddToUserDictionary(message);
-		case 'ignoreLint':
-			return handleIgnoreLint(message);
 		case 'setDefaultStatus':
 			return handleSetDefaultStatus(message);
 		case 'getDefaultStatus':
 			return handleGetDefaultStatus();
 		case 'getEnabledDomains':
 			return handleGetEnabledDomains();
-		case 'getUserDictionary':
-			return handleGetUserDictionary();
+		case 'addToUserDictionary':
+			return handleAddToUserDictionary(message);
 		case 'setUserDictionary':
 			return handleSetUserDictionary(message);
+		case 'getUserDictionary':
+			return handleGetUserDictionary();
+		case 'ignoreLint':
+			return handleIgnoreLint(message);
+		case 'clearIgnoredLints':
+			return handleClearIgnoredLints();
 		case 'getActivationKey':
 			return handleGetActivationKey();
 		case 'setActivationKey':
@@ -265,25 +159,9 @@ function handleRequest(message: Request, sender?: chrome.runtime.MessageSender):
 			return handleGetHotkey();
 		case 'setHotkey':
 			return handleSetHotkey(message);
-		case 'openReportError':
-			return handleOpenReportError(message, sender);
 		case 'openOptions':
 			chrome.runtime.openOptionsPage();
 			return Promise.resolve(createUnitResponse());
-		case 'postFormData':
-			return handlePostFormData(message);
-		case 'getInstalledOn':
-			return handleGetInstalledOn(message);
-		case 'getReviewed':
-			return handleGetReviewed(message);
-		case 'setReviewed':
-			return handleSetReviewed(message);
-		case 'getWeirpacks':
-			return handleGetWeirpacks();
-		case 'addWeirpack':
-			return handleAddWeirpack(message);
-		case 'removeWeirpack':
-			return handleRemoveWeirpack(message);
 	}
 }
 
@@ -292,11 +170,8 @@ async function handleLint(
 	req: LintRequest,
 	sender?: chrome.runtime.MessageSender,
 ): Promise<LintResponse> {
-	await ensureLinterReady();
-	await resetLinterIfPersistedStateWasCleared();
-
-	// Keep the content-script keepalive ping cheap; empty requests should not hit inheritance or linting.
-	if (req.text.length === 0) {
+	// Keep the content-script keepalive ping cheap; empty requests must not reach the server.
+	if (req.text.trim().length === 0) {
 		return { kind: 'lints', lints: {} };
 	}
 
@@ -304,35 +179,41 @@ async function handleLint(
 		return { kind: 'lints', lints: {} };
 	}
 
-	const isolateEnglish = req.options?.isolateEnglish === true || (await getIsolateEnglish());
-	const grouped = await linter.organizedLints(req.text, { ...req.options, isolateEnglish });
-	const unpackedEntries = await Promise.all(
-		Object.entries(grouped).map(async ([source, lints]) => {
-			const unpacked = await Promise.all(lints.map((lint) => unpackLint(req.text, lint, linter)));
+	const settings = await getServerSettings();
+	if (settings.serverUrl.trim().length === 0) {
+		return { kind: 'lints', lints: {} };
+	}
 
-			// Free the lints
-			lints.forEach((l) => {
-				l.free();
-			});
-
-			return [source, unpacked] as const;
-		}),
-	);
-	const unpackedBySource = Object.fromEntries(unpackedEntries) as UnpackedLintGroups;
-	return { kind: 'lints', lints: unpackedBySource };
+	try {
+		const result = await checkWithLanguageTool(req.text, {
+			serverUrl: settings.serverUrl,
+			preferredVariants: settings.preferredVariants,
+			disabledRules: await getDisabledRules(),
+		});
+		return { kind: 'lints', lints: await removeDismissedLints(result.lints) };
+	} catch (error) {
+		console.error('LanguageTool check failed', error);
+		return { kind: 'lints', lints: {} };
+	}
 }
 
-async function resetLinterIfPersistedStateWasCleared(): Promise<void> {
-	if (!linterHasPersistedState) {
-		return;
-	}
+/** Drop lints the user ignored and spelling lints for words in the user dictionary. */
+async function removeDismissedLints(groups: UnpackedLintGroups): Promise<UnpackedLintGroups> {
+	const ignored = new Set(await getIgnoredLints());
+	const dictionary = new Set(await getUserDictionary());
 
-	const stored = await chrome.storage.local.get(linterStorageKeys);
-	const hasStoredLinterState = linterStorageKeys.some((key) => stored[key] !== undefined);
-	if (!hasStoredLinterState) {
-		await initializeLinter(await getDialect());
-		linterHasPersistedState = false;
+	const filtered: UnpackedLintGroups = {};
+	for (const [rule, lints] of Object.entries(groups)) {
+		const kept = lints.filter(
+			(lint) =>
+				!ignored.has(lint.context_hash) &&
+				!(lint.lint_kind === 'Spelling' && dictionary.has(lint.problem_text)),
+		);
+		if (kept.length > 0) {
+			filtered[rule] = kept;
+		}
 	}
+	return filtered;
 }
 
 async function shouldLintForRequest(
@@ -368,61 +249,68 @@ function getParentDomain(sender?: chrome.runtime.MessageSender): string | null {
 	}
 }
 
-async function handleGetConfig(_req: GetConfigRequest): Promise<GetConfigResponse> {
-	await ensureLinterReady();
-	return { kind: 'getConfig', config: await getLintConfig() };
+async function handleGetServerSettings(): Promise<GetServerSettingsResponse> {
+	return { kind: 'getServerSettings', settings: await getServerSettings() };
 }
 
-async function handleGetStructuredConfig(): Promise<GetStructuredConfigResponse> {
-	await ensureLinterReady();
-	return {
-		kind: 'getStructuredConfig',
-		config: JSON.parse(await linter.getStructuredLintConfigJSON()),
-	};
-}
-
-async function handleSetConfig(req: SetConfigRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	await setLintConfig(req.config);
-
+async function handleSetServerSettings(req: SetServerSettingsRequest): Promise<UnitResponse> {
+	await chrome.storage.local.set({
+		serverSettings: {
+			serverUrl: req.settings.serverUrl.trim(),
+			preferredVariants: req.settings.preferredVariants.trim(),
+		},
+	});
 	return createUnitResponse();
 }
 
-async function handleSetDialect(req: SetDialectRequest): Promise<UnitResponse> {
-	await setDialect(req.dialect);
+async function handleTestServer(req: TestServerRequest): Promise<TestServerResponse> {
+	try {
+		const version = await fetchServerVersion(req.serverUrl);
+		return { kind: 'testServer', ok: true, message: version };
+	} catch (error) {
+		return { kind: 'testServer', ok: false, message: String(error) };
+	}
+}
 
+async function handleGetDisabledRules(): Promise<GetDisabledRulesResponse> {
+	return { kind: 'getDisabledRules', rules: await getDisabledRules() };
+}
+
+async function handleSetDisabledRules(req: SetDisabledRulesRequest): Promise<UnitResponse> {
+	await setDisabledRules(req.rules);
 	return createUnitResponse();
 }
 
-async function handleGetDialect(_req: GetDialectRequest): Promise<GetDialectResponse> {
-	return { kind: 'getDialect', dialect: await getDialect() };
-}
-
-async function handleGetIsolateEnglish(): Promise<GetIsolateEnglishResponse> {
-	return { kind: 'getIsolateEnglish', isolateEnglish: await getIsolateEnglish() };
-}
-
-async function handleSetIsolateEnglish(req: SetIsolateEnglishRequest): Promise<UnitResponse> {
-	await setIsolateEnglish(req.isolateEnglish);
-
+async function handleSetRuleEnabled(req: SetRuleEnabledRequest): Promise<UnitResponse> {
+	const rules = new Set(await getDisabledRules());
+	if (req.enabled) {
+		rules.delete(req.ruleId);
+	} else {
+		rules.add(req.ruleId);
+	}
+	await setDisabledRules([...rules]);
 	return createUnitResponse();
 }
 
-async function handleGetDelay(_req: GetDelayRequest): Promise<GetDelayResponse> {
+async function handleGetDelay(): Promise<GetDelayResponse> {
 	return { kind: 'getDelay', delay: await getDelay() };
 }
 
 async function handleSetDelay(req: SetDelayRequest): Promise<UnitResponse> {
-	await setDelay(req.delay);
-
+	const delay = Number.isFinite(req.delay) ? Math.max(0, Math.trunc(req.delay)) : 0;
+	await chrome.storage.local.set({ delay });
 	return createUnitResponse();
 }
 
 async function handleIgnoreLint(req: IgnoreLintRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	await linter.ignoreLintHash(BigInt(req.contextHash));
-	await setIgnoredLints(await linter.exportIgnoredLints());
+	const ignored = new Set(await getIgnoredLints());
+	ignored.add(req.contextHash);
+	await chrome.storage.local.set({ ignoredLints: [...ignored] });
+	return createUnitResponse();
+}
 
+async function handleClearIgnoredLints(): Promise<UnitResponse> {
+	await chrome.storage.local.set({ ignoredLints: [] });
 	return createUnitResponse();
 }
 
@@ -466,56 +354,43 @@ async function handleSetDefaultStatus(req: SetDefaultStatusRequest): Promise<Uni
 	return createUnitResponse();
 }
 
-async function handleGetLintDescriptions(
-	_req: GetLintDescriptionsRequest,
-): Promise<GetLintDescriptionsResponse> {
-	await ensureLinterReady();
-	return {
-		kind: 'getLintDescriptions',
-		descriptions: await linter.getLintDescriptionsHTML(),
-	};
-}
-
 async function handleSetUserDictionary(req: SetUserDictionaryRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	await resetDictionary();
-	await addToDictionary(req.words);
-
+	await chrome.storage.local.set({ userDictionary: [...new Set(req.words)] });
 	return createUnitResponse();
 }
 
 async function handleAddToUserDictionary(req: AddToUserDictionaryRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	await addToDictionary(req.words);
-
+	const words = new Set(await getUserDictionary());
+	for (const word of req.words) {
+		words.add(word);
+	}
+	await chrome.storage.local.set({ userDictionary: [...words] });
 	return createUnitResponse();
 }
 
 async function handleGetUserDictionary(): Promise<GetUserDictionaryResponse> {
-	const dict = await getUserDictionary();
-
-	return { kind: 'getUserDictionary', words: dict };
+	return { kind: 'getUserDictionary', words: await getUserDictionary() };
 }
 
 async function handleGetActivationKey(): Promise<GetActivationKeyResponse> {
-	const key = await getActivationKey();
-
-	return { kind: 'getActivationKey', key };
+	const resp = await chrome.storage.local.get({ activationKey: ActivationKey.Off });
+	return { kind: 'getActivationKey', key: resp.activationKey };
 }
 
 async function handleSetActivationKey(req: SetActivationKeyRequest): Promise<UnitResponse> {
 	if (!Object.values(ActivationKey).includes(req.key)) {
 		throw new Error(`Invalid activation key: ${req.key}`);
 	}
-	await setActivationKey(req.key);
+	await chrome.storage.local.set({ activationKey: req.key });
 
 	return createUnitResponse();
 }
 
 async function handleGetHotkey(): Promise<GetHotkeyResponse> {
-	const hotkey = await getHotkey();
-
-	return { kind: 'getHotkey', hotkey };
+	const resp = await chrome.storage.local.get({
+		hotkey: { modifiers: ['Ctrl'], key: 'e' },
+	});
+	return { kind: 'getHotkey', hotkey: resp.hotkey as Hotkey };
 }
 
 async function handleSetHotkey(req: SetHotkeyRequest): Promise<UnitResponse> {
@@ -524,239 +399,45 @@ async function handleSetHotkey(req: SetHotkeyRequest): Promise<UnitResponse> {
 		modifiers: [...req.hotkey.modifiers],
 		key: req.hotkey.key,
 	};
-	await setHotkey(hotkey);
+	await chrome.storage.local.set({ hotkey });
 
 	return createUnitResponse();
 }
 
-async function handleOpenReportError(
-	req: OpenReportErrorRequest,
-	sender?: chrome.runtime.MessageSender,
-): Promise<UnitResponse> {
-	const popupState: PopupState = {
-		page: 'report-error',
-		example: req.example,
-		rule_id: req.rule_id,
-		feedback: req.feedback,
-	};
-
-	await chrome.storage.local.set({ popupState, reportTabId: sender?.tab?.id });
-
-	if (chrome.action?.openPopup) {
-		try {
-			await chrome.action.openPopup();
-		} catch (error) {
-			console.error('Failed to open popup for report error', error);
-		}
-	}
-
-	return createUnitResponse();
-}
-
-async function handlePostFormData(req: PostFormDataRequest): Promise<PostFormDataResponse> {
-	const formData = new FormData();
-	for (const [key, value] of Object.entries(req.formData)) {
-		formData.append(key, value);
-	}
-
-	try {
-		const response = await fetch(req.url, {
-			method: 'POST',
-			body: formData,
-		});
-
-		return { kind: 'postFormData', success: response.ok };
-	} catch (error) {
-		console.error('Failed to post form data', error);
-		return { kind: 'postFormData', success: false };
-	}
-}
-
-async function handleGetInstalledOn(_req: GetInstalledOnRequest): Promise<GetInstalledOnResponse> {
-	await setInstalledOnIfMissing();
-	return { kind: 'getInstalledOn', installedOn: await getInstalledOn() };
-}
-
-async function handleGetReviewed(_req: GetReviewedRequest): Promise<GetReviewedResponse> {
-	return { kind: 'getReviewed', reviewed: await getReviewed() };
-}
-
-async function handleSetReviewed(req: SetReviewedRequest): Promise<UnitResponse> {
-	await setReviewed(req.reviewed);
-	return createUnitResponse();
-}
-
-async function handleGetWeirpacks(): Promise<GetWeirpacksResponse> {
-	const stored = await getStoredWeirpacks();
-	const weirpacks: WeirpackMeta[] = stored.map((item) => ({
-		id: item.id,
-		name: item.name,
-		filename: item.filename,
-		version: item.version,
-		installedAt: item.installedAt,
-	}));
-
-	return { kind: 'getWeirpacks', weirpacks };
-}
-
-async function handleAddWeirpack(req: AddWeirpackRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	const bytes = Uint8Array.from(req.bytes);
-	const failures = await linter.loadWeirpackFromBytes(bytes);
-	if (failures !== undefined) {
-		throw new Error(
-			`This Weirpack has failing tests (${Object.keys(failures).length} rule(s) failed) and was not loaded.`,
-		);
-	}
-
-	const manifest = unpackWeirpackBytes(bytes).manifest;
-	const candidateName = manifest.name;
-	const candidateVersion = manifest.version;
-	const name =
-		typeof candidateName === 'string' && candidateName.trim().length > 0
-			? candidateName.trim()
-			: req.filename;
-	const version =
-		typeof candidateVersion === 'string' && candidateVersion.trim().length > 0
-			? candidateVersion.trim()
-			: null;
-
-	const current = await getStoredWeirpacks();
-	current.push({
-		id: createWeirpackId(),
-		name,
-		filename: req.filename,
-		version,
-		installedAt: new Date().toISOString(),
-		bytesBase64: bytesToBase64(bytes),
-	});
-	await setStoredWeirpacks(current);
-
-	return createUnitResponse();
-}
-
-async function handleRemoveWeirpack(req: RemoveWeirpackRequest): Promise<UnitResponse> {
-	await ensureLinterReady();
-	const current = await getStoredWeirpacks();
-	const next = current.filter((item) => item.id !== req.id);
-	await setStoredWeirpacks(next);
-
-	initializeLinter(await linter.getDialect());
-	return createUnitResponse();
-}
-
-/** Set the lint configuration inside the global `linter` and in permanent storage. */
-async function setLintConfig(lintConfig: LintConfig): Promise<void> {
-	await linter.setLintConfig(lintConfig);
-	linterHasPersistedState = true;
-
-	const json = await linter.getLintConfigAsJSON();
-
-	await chrome.storage.local.set({ lintConfig: json });
-}
-
-/** Get the lint configuration from permanent storage. */
-async function getLintConfig(): Promise<LintConfig> {
-	const json = await linter.getLintConfigAsJSON();
-	const resp = await chrome.storage.local.get({ lintConfig: json });
-	return JSON.parse(resp.lintConfig);
-}
-
-/** Get the ignored lint state from permanent storage. */
-async function setIgnoredLints(state: string): Promise<void> {
-	await linter.importIgnoredLints(state);
-	linterHasPersistedState = true;
-
-	const json = await linter.exportIgnoredLints();
-
-	await chrome.storage.local.set({ ignoredLints: json });
-}
-
-/** Get the ignored lint state from permanent storage. */
-async function getIgnoredLints(): Promise<string> {
-	const state = await linter.exportIgnoredLints();
-	const resp = await chrome.storage.local.get({ ignoredLints: state });
-	return resp.ignoredLints;
-}
-
-async function getDialect(): Promise<Dialect> {
-	const resp = await chrome.storage.local.get('dialect');
-
-	// If user hasn't set a dialect, try to detect from browser language
-	if (resp.dialect === undefined) {
-		return detectBrowserDialect();
-	}
-
-	return resp.dialect;
-}
-
-async function getIsolateEnglish(): Promise<boolean> {
-	const resp = await chrome.storage.local.get({ isolateEnglish: false });
-	return resp.isolateEnglish === true;
-}
-
-async function setIsolateEnglish(isolateEnglish: boolean): Promise<void> {
-	await chrome.storage.local.set({ isolateEnglish });
-}
-
-async function getActivationKey(): Promise<ActivationKey> {
+async function getServerSettings(): Promise<ServerSettings> {
 	const resp = await chrome.storage.local.get({
-		activationKey: ActivationKey.Off,
+		serverSettings: { serverUrl: __DEFAULT_SERVER_URL__, preferredVariants: '' },
 	});
-	return resp.activationKey;
+	return resp.serverSettings;
 }
 
-async function getHotkey(): Promise<Hotkey> {
-	const resp = await chrome.storage.local.get({
-		hotkey: { modifiers: ['Ctrl'], key: 'e' },
-	});
-	return resp.hotkey;
+async function getDisabledRules(): Promise<string[]> {
+	const resp = await chrome.storage.local.get({ disabledRules: [] });
+	return resp.disabledRules;
 }
 
-async function setActivationKey(key: ActivationKey) {
-	await chrome.storage.local.set({ activationKey: key });
-}
-
-async function setHotkey(hotkey: Hotkey) {
-	await chrome.storage.local.set({ hotkey: hotkey });
-}
-
-async function initializeLinter(dialect: Dialect) {
-	if (linter != null) {
-		linter.dispose();
-	}
-
-	linter = new LocalLinter({
-		binary: createBinaryModuleFromUrl(chrome.runtime.getURL('./wasm/harper_wasm_bg.wasm')),
-		dialect,
-	});
-
-	await Promise.all([
-		getIgnoredLints().then((i) => linter.importIgnoredLints(i)),
-		getUserDictionary().then((u) => linter.importWords(u)),
-		getLintConfig().then((c) => linter.setLintConfig(c)),
-		loadStoredWeirpacksIntoLinter(),
-	]);
-
-	await linter.setup();
-}
-
-async function setDialect(dialect: Dialect) {
-	linterHasPersistedState = true;
-	await chrome.storage.local.set({ dialect });
-	await initializeLinter(dialect);
-}
-
-async function setDelay(delay: number) {
-	const normalizedDelay = Number.isFinite(delay) ? Math.max(0, Math.trunc(delay)) : 0;
-	await chrome.storage.local.set({ delay: normalizedDelay });
+async function setDisabledRules(rules: string[]): Promise<void> {
+	const cleaned = [...new Set(rules.map((rule) => rule.trim()).filter((rule) => rule.length > 0))];
+	await chrome.storage.local.set({ disabledRules: cleaned.sort() });
 }
 
 async function getDelay(): Promise<number> {
-	const resp = await chrome.storage.local.get({ delay: 0 });
+	const resp = await chrome.storage.local.get({ delay: DEFAULT_DELAY_MS });
 	const { delay } = resp;
 
-	return typeof delay === 'number' && Number.isFinite(delay) && delay >= 0 ? delay : 0;
+	return typeof delay === 'number' && Number.isFinite(delay) && delay >= 0
+		? delay
+		: DEFAULT_DELAY_MS;
+}
+
+async function getIgnoredLints(): Promise<string[]> {
+	const resp = await chrome.storage.local.get({ ignoredLints: [] });
+	return Array.isArray(resp.ignoredLints) ? resp.ignoredLints : [];
+}
+
+async function getUserDictionary(): Promise<string[]> {
+	const resp = await chrome.storage.local.get({ userDictionary: [] });
+	return Array.isArray(resp.userDictionary) ? resp.userDictionary : [];
 }
 
 /** Format the key to be used in local storage to store domain status. */
@@ -789,7 +470,7 @@ async function getStoredDomainStatus(domain: string): Promise<boolean | undefine
 	return undefined;
 }
 
-/** Check if Harper has been enabled for a given domain. */
+/** Check if checking has been enabled for a given domain. */
 async function enabledForDomain(domain: string): Promise<boolean> {
 	const stored = await getStoredDomainStatus(domain);
 	if (stored !== undefined) {
@@ -805,7 +486,7 @@ async function enabledForDomain(domain: string): Promise<boolean> {
 	return await enabledByDefault();
 }
 
-/** Set whether Harper is enabled for a given domain.
+/** Set whether checking is enabled for a given domain.
  *
  * @param overrideValue dictates whether this should override a previous setting.
  * */
@@ -821,120 +502,18 @@ async function setDomainEnable(domain: string, status: boolean, overrideValue = 
 	}
 }
 
-/** Set whether Harper is enabled by default. */
+/** Set whether checking is enabled by default. */
 async function setDefaultEnable(status: boolean) {
 	await chrome.storage.local.set({ defaultEnable: status });
 }
 
-/** Check if Harper has been enabled by default. */
+/** Check if checking has been enabled by default. */
 async function enabledByDefault(): Promise<boolean> {
 	const req = await chrome.storage.local.get({ defaultEnable: false });
 	return req.defaultEnable;
 }
 
-/** Check whether Harper's state has been set for a given domain. */
+/** Check whether the checking state has been set for a given domain. */
 async function isDomainSet(domain: string): Promise<boolean> {
 	return (await getStoredDomainStatus(domain)) !== undefined;
-}
-
-/** Reset the persistent user dictionary. */
-async function resetDictionary(): Promise<void> {
-	await chrome.storage.local.set({ userDictionary: null });
-
-	initializeLinter(await linter.getDialect());
-}
-
-/** Add words to the persistent user dictionary. */
-async function addToDictionary(words: string[]): Promise<void> {
-	const exported = await linter.exportWords();
-	exported.push(...words);
-	linterHasPersistedState = true;
-
-	await Promise.all([
-		linter.importWords(exported),
-		chrome.storage.local.set({ userDictionary: exported }),
-	]);
-}
-
-/** Grab the user dictionary from persistent storage. */
-async function getUserDictionary(): Promise<string[]> {
-	const resp = await chrome.storage.local.get({ userDictionary: [] });
-	return resp.userDictionary;
-}
-
-/** Record the date the extension was installed, if it's missing. */
-async function setInstalledOnIfMissing(): Promise<void> {
-	const current = await getInstalledOn();
-	if (current !== null) {
-		return;
-	}
-
-	const installedOn = new Date().toISOString();
-	await chrome.storage.local.set({ installedOn });
-}
-
-async function getInstalledOn(): Promise<string | null> {
-	const resp = await chrome.storage.local.get({ installedOn: null });
-	return resp.installedOn;
-}
-
-async function getReviewed(): Promise<boolean> {
-	const resp = await chrome.storage.local.get({ reviewed: false });
-	return Boolean(resp.reviewed);
-}
-
-async function setReviewed(reviewed: boolean): Promise<void> {
-	await chrome.storage.local.set({ reviewed });
-}
-
-type StoredWeirpack = WeirpackMeta & {
-	bytesBase64: string;
-};
-
-function createWeirpackId(): string {
-	return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-	let binary = '';
-	for (const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-	return btoa(binary);
-}
-
-function base64ToBytes(encoded: string): Uint8Array {
-	const binary = atob(encoded);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	return bytes;
-}
-
-async function setStoredWeirpacks(weirpacks: StoredWeirpack[]): Promise<void> {
-	linterHasPersistedState = true;
-	await chrome.storage.local.set({ [WEIRPACKS_KEY]: weirpacks });
-}
-
-async function getStoredWeirpacks(): Promise<StoredWeirpack[]> {
-	const response = await chrome.storage.local.get({
-		[WEIRPACKS_KEY]: [] as StoredWeirpack[],
-	});
-	const value = response[WEIRPACKS_KEY];
-	return Array.isArray(value) ? value : [];
-}
-
-async function loadStoredWeirpacksIntoLinter(): Promise<void> {
-	const weirpacks = await getStoredWeirpacks();
-	for (const weirpack of weirpacks) {
-		try {
-			const failures = await linter.loadWeirpackFromBytes(base64ToBytes(weirpack.bytesBase64));
-			if (failures !== undefined) {
-				console.error(`Stored Weirpack ${weirpack.name} failed tests`, failures);
-			}
-		} catch (error) {
-			console.error(`Failed to load stored Weirpack ${weirpack.name}`, error);
-		}
-	}
 }

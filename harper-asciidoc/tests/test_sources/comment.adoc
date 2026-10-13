@@ -1,2 +1,0 @@
-// This is a comment with a typo: spelll
-// Another line of the same comment.

@@ -1,10 +1,10 @@
 import { icon } from '@fortawesome/fontawesome-svg-core';
 import { faSliders } from '@fortawesome/free-solid-svg-icons';
-import { SuggestionKind } from 'harper.js';
 import { h, type VNode } from 'virtual-dom';
 import bookDownSvg from '../assets/bookDownSvg';
 import type { Box, IgnorableLintBox } from './Box';
 import { type LintKind, lintKindColor } from './lintKindColor';
+import { SuggestionKind } from './types';
 import type { UnpackedLint, UnpackedSuggestion } from './unpackLint';
 
 const settingsIconSvg = icon(faSliders).html.join('');

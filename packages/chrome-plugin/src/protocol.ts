@@ -1,16 +1,13 @@
-import type { Dialect, LintConfig, LintOptions, StructuredLintConfig } from 'harper.js';
-import type { UnpackedLintGroups } from 'lint-framework';
+import type { LintOptions, UnpackedLintGroups } from 'lint-framework';
 
 export type Request =
 	| LintRequest
-	| GetConfigRequest
-	| GetStructuredConfigRequest
-	| SetConfigRequest
-	| GetLintDescriptionsRequest
-	| SetDialectRequest
-	| GetDialectRequest
-	| GetIsolateEnglishRequest
-	| SetIsolateEnglishRequest
+	| GetServerSettingsRequest
+	| SetServerSettingsRequest
+	| TestServerRequest
+	| GetDisabledRulesRequest
+	| SetDisabledRulesRequest
+	| SetRuleEnabledRequest
 	| GetDelayRequest
 	| SetDelayRequest
 	| SetDomainStatusRequest
@@ -20,41 +17,28 @@ export type Request =
 	| GetEnabledDomainsRequest
 	| AddToUserDictionaryRequest
 	| SetUserDictionaryRequest
-	| IgnoreLintRequest
 	| GetUserDictionaryRequest
+	| IgnoreLintRequest
+	| ClearIgnoredLintsRequest
 	| GetActivationKeyRequest
 	| SetActivationKeyRequest
 	| GetHotkeyRequest
 	| SetHotkeyRequest
-	| OpenOptionsRequest
-	| GetInstalledOnRequest
-	| GetReviewedRequest
-	| SetReviewedRequest
-	| OpenReportErrorRequest
-	| PostFormDataRequest
-	| GetWeirpacksRequest
-	| AddWeirpackRequest
-	| RemoveWeirpackRequest;
+	| OpenOptionsRequest;
 
 export type Response =
 	| LintResponse
-	| GetConfigResponse
-	| GetStructuredConfigResponse
 	| UnitResponse
-	| GetLintDescriptionsResponse
-	| GetDialectResponse
-	| GetIsolateEnglishResponse
+	| GetServerSettingsResponse
+	| TestServerResponse
+	| GetDisabledRulesResponse
 	| GetDelayResponse
 	| GetDomainStatusResponse
 	| GetDefaultStatusResponse
 	| GetEnabledDomainsResponse
 	| GetUserDictionaryResponse
 	| GetHotkeyResponse
-	| GetActivationKeyResponse
-	| GetInstalledOnResponse
-	| GetReviewedResponse
-	| PostFormDataResponse
-	| GetWeirpacksResponse;
+	| GetActivationKeyResponse;
 
 export type LintRequest = {
 	kind: 'lint';
@@ -68,32 +52,58 @@ export type LintResponse = {
 	lints: UnpackedLintGroups;
 };
 
-export type GetConfigRequest = {
-	kind: 'getConfig';
+/** How to reach the LanguageTool server. */
+export type ServerSettings = {
+	/** Base URL of the server, such as `https://lt.example.com`. Empty disables checking. */
+	serverUrl: string;
+	/** Comma-separated language variants, such as `de-CH,en-GB`, preferred by language detection. */
+	preferredVariants: string;
 };
 
-export type GetConfigResponse = {
-	kind: 'getConfig';
-	config: LintConfig;
+export type GetServerSettingsRequest = {
+	kind: 'getServerSettings';
 };
 
-export type GetStructuredConfigRequest = {
-	kind: 'getStructuredConfig';
+export type GetServerSettingsResponse = {
+	kind: 'getServerSettings';
+	settings: ServerSettings;
 };
 
-export type GetStructuredConfigResponse = {
-	kind: 'getStructuredConfig';
-	config: StructuredLintConfig;
+export type SetServerSettingsRequest = {
+	kind: 'setServerSettings';
+	settings: ServerSettings;
 };
 
-export type SetConfigRequest = {
-	kind: 'setConfig';
-	config: LintConfig;
+export type TestServerRequest = {
+	kind: 'testServer';
+	serverUrl: string;
 };
 
-export type SetDialectRequest = {
-	kind: 'setDialect';
-	dialect: Dialect;
+export type TestServerResponse = {
+	kind: 'testServer';
+	ok: boolean;
+	/** The server's software version on success, or the error otherwise. */
+	message: string;
+};
+
+export type GetDisabledRulesRequest = {
+	kind: 'getDisabledRules';
+};
+
+export type GetDisabledRulesResponse = {
+	kind: 'getDisabledRules';
+	rules: string[];
+};
+
+export type SetDisabledRulesRequest = {
+	kind: 'setDisabledRules';
+	rules: string[];
+};
+
+export type SetRuleEnabledRequest = {
+	kind: 'setRuleEnabled';
+	ruleId: string;
+	enabled: boolean;
 };
 
 export type GetDelayRequest = {
@@ -108,38 +118,6 @@ export type GetDelayResponse = {
 export type SetDelayRequest = {
 	kind: 'setDelay';
 	delay: number;
-};
-
-export type GetLintDescriptionsRequest = {
-	kind: 'getLintDescriptions';
-};
-
-export type GetLintDescriptionsResponse = {
-	kind: 'getLintDescriptions';
-	descriptions: Record<string, string>;
-};
-
-export type GetDialectRequest = {
-	kind: 'getDialect';
-};
-
-export type GetDialectResponse = {
-	kind: 'getDialect';
-	dialect: Dialect;
-};
-
-export type GetIsolateEnglishRequest = {
-	kind: 'getIsolateEnglish';
-};
-
-export type GetIsolateEnglishResponse = {
-	kind: 'getIsolateEnglish';
-	isolateEnglish: boolean;
-};
-
-export type SetIsolateEnglishRequest = {
-	kind: 'setIsolateEnglish';
-	isolateEnglish: boolean;
 };
 
 export type GetDomainStatusRequest = {
@@ -203,42 +181,14 @@ export type GetUserDictionaryResponse = {
 	words: string[];
 };
 
-export type GetInstalledOnRequest = {
-	kind: 'getInstalledOn';
-};
-
-export type GetInstalledOnResponse = {
-	kind: 'getInstalledOn';
-	installedOn: string | null;
-};
-
-export type GetReviewedRequest = {
-	kind: 'getReviewed';
-};
-
-export type GetReviewedResponse = {
-	kind: 'getReviewed';
-	reviewed: boolean;
-};
-
-export type SetReviewedRequest = {
-	kind: 'setReviewed';
-	reviewed: boolean;
-};
-
 export type IgnoreLintRequest = {
 	kind: 'ignoreLint';
 	contextHash: string;
 };
 
-/** Similar to returning void. */
-export type UnitResponse = {
-	kind: 'unit';
+export type ClearIgnoredLintsRequest = {
+	kind: 'clearIgnoredLints';
 };
-
-export function createUnitResponse(): UnitResponse {
-	return { kind: 'unit' };
-}
 
 export enum ActivationKey {
 	Off = 'off',
@@ -250,18 +200,9 @@ export type GetActivationKeyRequest = {
 	kind: 'getActivationKey';
 };
 
-export type GetHotkeyRequest = {
-	kind: 'getHotkey';
-};
-
 export type GetActivationKeyResponse = {
 	kind: 'getActivationKey';
 	key: ActivationKey;
-};
-
-export type PostFormDataResponse = {
-	kind: 'postFormData';
-	success: boolean;
 };
 
 export type SetActivationKeyRequest = {
@@ -269,8 +210,15 @@ export type SetActivationKeyRequest = {
 	key: ActivationKey;
 };
 
-export type OpenOptionsRequest = {
-	kind: 'openOptions';
+export type Modifier = 'Ctrl' | 'Shift' | 'Alt';
+
+export type Hotkey = {
+	modifiers: Modifier[];
+	key: string;
+};
+
+export type GetHotkeyRequest = {
+	kind: 'getHotkey';
 };
 
 export type GetHotkeyResponse = {
@@ -283,49 +231,14 @@ export type SetHotkeyRequest = {
 	hotkey: Hotkey;
 };
 
-export type Modifier = 'Ctrl' | 'Shift' | 'Alt';
-
-export type Hotkey = {
-	modifiers: Modifier[];
-	key: string;
-};
-export type OpenReportErrorRequest = {
-	kind: 'openReportError';
-	example: string;
-	rule_id: string;
-	feedback: string;
+export type OpenOptionsRequest = {
+	kind: 'openOptions';
 };
 
-export type PostFormDataRequest = {
-	kind: 'postFormData';
-	url: string;
-	formData: Record<string, string>;
+export type UnitResponse = {
+	kind: 'unit';
 };
 
-export type WeirpackMeta = {
-	id: string;
-	name: string;
-	filename: string;
-	version: string | null;
-	installedAt: string;
-};
-
-export type GetWeirpacksRequest = {
-	kind: 'getWeirpacks';
-};
-
-export type GetWeirpacksResponse = {
-	kind: 'getWeirpacks';
-	weirpacks: WeirpackMeta[];
-};
-
-export type AddWeirpackRequest = {
-	kind: 'addWeirpack';
-	filename: string;
-	bytes: number[];
-};
-
-export type RemoveWeirpackRequest = {
-	kind: 'removeWeirpack';
-	id: string;
-};
+export function createUnitResponse(): UnitResponse {
+	return { kind: 'unit' };
+}

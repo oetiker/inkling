@@ -1,8 +1,0 @@
-echo "Hello World!"
-
-
-
-
-
-
-#        Errorz

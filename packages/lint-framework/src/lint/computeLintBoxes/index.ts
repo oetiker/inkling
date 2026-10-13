@@ -1,4 +1,3 @@
-import { type Span, SuggestionKind } from 'harper.js';
 import { domRectToBox, type IgnorableLintBox, isBottomEdgeInBox, shrinkBoxToFit } from '../Box';
 import { getRangeForTextSpan } from '../domUtils';
 import {
@@ -11,6 +10,7 @@ import {
 } from '../editorUtils';
 import { maybeComputeGoogleDocsLintBoxes } from '../googleDocsAdapter';
 import TextFieldRange from '../TextFieldRange';
+import { type Span, SuggestionKind } from '../types';
 import {
 	applySuggestion,
 	type UnpackedLint,

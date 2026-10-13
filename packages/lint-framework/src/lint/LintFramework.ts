@@ -1,4 +1,3 @@
-import type { LintOptions } from 'harper.js';
 import { closestBox, type IgnorableLintBox } from './Box';
 import { isGoogleDocsTarget } from './computeLintBoxes/googleDocsUtilities';
 import computeLintBoxes from './computeLintBoxes/index';
@@ -7,6 +6,7 @@ import { getCaretPosition, getCMRoot } from './editorUtils';
 import Highlights from './Highlights';
 import PopupHandler from './PopupHandler';
 import { remapLintToCurrentSource } from './spanMapping';
+import type { LintOptions } from './types';
 import type { UnpackedLint, UnpackedLintGroups } from './unpackLint';
 
 type ActivationKey = 'off' | 'shift' | 'control';

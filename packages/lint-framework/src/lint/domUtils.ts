@@ -1,5 +1,5 @@
-import type { Span } from 'harper.js';
 import { isBoxInScreen } from './Box';
+import type { Span } from './types';
 
 /**
  * Turn a `NodeList` into a normal JavaScript array.

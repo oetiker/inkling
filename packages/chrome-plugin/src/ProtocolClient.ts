@@ -1,7 +1,6 @@
-import type { Dialect, LintConfig, LintOptions, StructuredLintConfig } from 'harper.js';
-import type { UnpackedLintGroups } from 'lint-framework';
+import type { LintOptions, UnpackedLintGroups } from 'lint-framework';
 import { LRUCache } from 'lru-cache';
-import type { ActivationKey, Hotkey, WeirpackMeta } from './protocol';
+import type { ActivationKey, Hotkey, ServerSettings } from './protocol';
 
 export default class ProtocolClient {
 	private static readonly lintCache = new LRUCache<string, Promise<UnpackedLintGroups>>({
@@ -16,9 +15,6 @@ export default class ProtocolClient {
 			text,
 			options?.language ?? 'markdown',
 			options?.forceAllHeadings ?? false,
-			options?.regex_mask ?? null,
-			options?.dedup ?? true,
-			options?.isolateEnglish ?? false,
 		]);
 	}
 
@@ -38,44 +34,33 @@ export default class ProtocolClient {
 		return p;
 	}
 
-	public static async getLintConfig(): Promise<LintConfig> {
-		return (await chrome.runtime.sendMessage({ kind: 'getConfig' })).config;
+	public static async getServerSettings(): Promise<ServerSettings> {
+		return (await chrome.runtime.sendMessage({ kind: 'getServerSettings' })).settings;
 	}
 
-	public static async getStructuredLintConfig(): Promise<StructuredLintConfig> {
-		return (await chrome.runtime.sendMessage({ kind: 'getStructuredConfig' })).config;
-	}
-
-	public static async setLintConfig(lintConfig: LintConfig): Promise<void> {
+	public static async setServerSettings(settings: ServerSettings): Promise<void> {
 		this.lintCache.clear();
-		await chrome.runtime.sendMessage({ kind: 'setConfig', config: lintConfig });
+		await chrome.runtime.sendMessage({ kind: 'setServerSettings', settings: { ...settings } });
+	}
+
+	/** Ask the server for its version. Resolves to the version, or to the error message. */
+	public static async testServer(serverUrl: string): Promise<{ ok: boolean; message: string }> {
+		const resp = await chrome.runtime.sendMessage({ kind: 'testServer', serverUrl });
+		return { ok: resp.ok, message: resp.message };
+	}
+
+	public static async getDisabledRules(): Promise<string[]> {
+		return (await chrome.runtime.sendMessage({ kind: 'getDisabledRules' })).rules;
+	}
+
+	public static async setDisabledRules(rules: string[]): Promise<void> {
+		this.lintCache.clear();
+		await chrome.runtime.sendMessage({ kind: 'setDisabledRules', rules: [...rules] });
 	}
 
 	public static async setRuleEnabled(ruleId: string, enabled: boolean): Promise<void> {
-		const config = await this.getLintConfig();
-		const nextConfig: LintConfig = { ...config, [ruleId]: enabled };
-		await this.setLintConfig(nextConfig);
-	}
-
-	public static async getLintDescriptions(): Promise<Record<string, string>> {
-		return (await chrome.runtime.sendMessage({ kind: 'getLintDescriptions' })).descriptions;
-	}
-
-	public static async getDialect(): Promise<Dialect> {
-		return (await chrome.runtime.sendMessage({ kind: 'getDialect' })).dialect;
-	}
-
-	public static async setDialect(dialect: Dialect): Promise<void> {
-		await chrome.runtime.sendMessage({ kind: 'setDialect', dialect });
-	}
-
-	public static async getIsolateEnglish(): Promise<boolean> {
-		return (await chrome.runtime.sendMessage({ kind: 'getIsolateEnglish' })).isolateEnglish;
-	}
-
-	public static async setIsolateEnglish(isolateEnglish: boolean): Promise<void> {
 		this.lintCache.clear();
-		await chrome.runtime.sendMessage({ kind: 'setIsolateEnglish', isolateEnglish });
+		await chrome.runtime.sendMessage({ kind: 'setRuleEnabled', ruleId, enabled });
 	}
 
 	public static async getDelay(): Promise<number> {
@@ -91,7 +76,7 @@ export default class ProtocolClient {
 		return (await chrome.runtime.sendMessage({ kind: 'getDomainStatus', domain })).enabled;
 	}
 
-	/** Set whether Harper is enabled for a given domain.
+	/** Set whether checking is enabled for a given domain.
 	 *
 	 * @param overrideValue dictates whether this should override a previous setting.
 	 * */
@@ -156,63 +141,18 @@ export default class ProtocolClient {
 		return (await chrome.runtime.sendMessage({ kind: 'getUserDictionary' })).words;
 	}
 
-	public static async getInstalledOn(): Promise<string | null> {
-		return (await chrome.runtime.sendMessage({ kind: 'getInstalledOn' })).installedOn;
-	}
-
-	public static async getReviewed(): Promise<boolean> {
-		return (await chrome.runtime.sendMessage({ kind: 'getReviewed' })).reviewed;
-	}
-
-	public static async setReviewed(reviewed: boolean): Promise<void> {
-		await chrome.runtime.sendMessage({ kind: 'setReviewed', reviewed });
-	}
-
 	public static async ignoreHash(hash: string): Promise<void> {
 		await chrome.runtime.sendMessage({ kind: 'ignoreLint', contextHash: hash });
 		this.lintCache.clear();
 	}
 
-	public static async openReportError(
-		example: string,
-		ruleId: string,
-		feedback: string,
-	): Promise<void> {
-		await chrome.runtime.sendMessage({
-			kind: 'openReportError',
-			example,
-			rule_id: ruleId,
-			feedback,
-		});
+	public static async clearIgnoredLints(): Promise<void> {
+		await chrome.runtime.sendMessage({ kind: 'clearIgnoredLints' });
+		this.lintCache.clear();
 	}
 
 	public static async openOptions(): Promise<void> {
 		// Use background to open options to support content scripts reliably
 		await chrome.runtime.sendMessage({ kind: 'openOptions' });
-	}
-
-	public static async postFormData(
-		url: string,
-		formData: Record<string, string>,
-	): Promise<boolean> {
-		return (await chrome.runtime.sendMessage({ kind: 'postFormData', url, formData })).success;
-	}
-
-	public static async getWeirpacks(): Promise<WeirpackMeta[]> {
-		return (await chrome.runtime.sendMessage({ kind: 'getWeirpacks' })).weirpacks;
-	}
-
-	public static async addWeirpack(filename: string, bytes: Uint8Array): Promise<void> {
-		this.lintCache.clear();
-		await chrome.runtime.sendMessage({
-			kind: 'addWeirpack',
-			filename,
-			bytes: Array.from(bytes),
-		});
-	}
-
-	public static async removeWeirpack(id: string): Promise<void> {
-		this.lintCache.clear();
-		await chrome.runtime.sendMessage({ kind: 'removeWeirpack', id });
 	}
 }

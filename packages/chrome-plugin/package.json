@@ -1,16 +1,15 @@
 {
-	"name": "chrome-plugin",
-	"displayName": "chrome-plugin",
-	"version": "2.12.0",
-	"author": "no one",
-	"description": "The private grammar checker for 21st Century English",
+	"name": "lt-local-extension",
+	"displayName": "Local Grammar Checker for LanguageTool",
+	"version": "0.1.0",
+	"author": "Tobias Oetiker",
+	"description": "Checks what you write in the browser with your own LanguageTool server",
 	"type": "module",
 	"license": "Apache-2.0",
 	"keywords": [
 		"chrome-extension",
-		"svelte",
-		"vite",
-		"create-chrome-ext"
+		"languagetool",
+		"grammar"
 	],
 	"engines": {
 		"node": ">=14.18.0"
@@ -23,9 +22,10 @@
 		"check:config": "tsc --noEmit --project tsconfig.node.json",
 		"check:svelte": "svelte-check --tsconfig ./tsconfig.json",
 		"preview": "vite preview",
-		"zip-for-chrome": "TARGET_BROWSER=chrome npm run build && node src/zip.js harper-chrome-plugin.zip",
-		"zip-for-firefox": "TARGET_BROWSER=firefox npm run build && node src/zip.js harper-firefox-plugin.zip",
-		"test": "playwright test --headed"
+		"zip-for-chrome": "TARGET_BROWSER=chrome pnpm run build && node src/zip.js lt-local-chrome.zip",
+		"zip-for-firefox": "TARGET_BROWSER=firefox pnpm run build && node src/zip.js lt-local-firefox.zip",
+		"test": "playwright test --headed",
+		"test:unit": "node --test --experimental-transform-types --disable-warning=ExperimentalWarning 'unit/*.test.ts'"
 	},
 	"devDependencies": {
 		"@crxjs/vite-plugin": "^2.3.0",
@@ -41,7 +41,6 @@
 		"http-server": "^14.1.1",
 		"playwright": "1.60.0",
 		"playwright-webextext": "^0.0.5",
-		"rollup-plugin-copy": "^3.5.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.3.3",
 		"svelte-preprocess": "^6.0.0",
@@ -54,7 +53,6 @@
 		"@fortawesome/free-solid-svg-icons": "^7.1.0",
 		"@webcomponents/custom-elements": "^1.6.0",
 		"components": "workspace:*",
-		"harper.js": "workspace:*",
 		"lint-framework": "workspace:*",
 		"lodash-es": "^4.17.21",
 		"lru-cache": "^11.1.0",

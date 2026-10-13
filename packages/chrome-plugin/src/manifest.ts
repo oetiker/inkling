@@ -5,15 +5,16 @@ const isDev = process.env.NODE_ENV == 'development';
 
 /**
  * Builds a CSP string that:
- *   • always meets the MV3 minimum (`'self' 'wasm-unsafe-eval'`)
+ *   • always meets the MV3 minimum (`'self'`)
  *   • whitelists the Vite HMR server only when `isDev` is true
  *
  * NOTE: `'unsafe-eval'` is *omitted* because Chrome blocks it outright.
  */
 export function makeExtensionCSP(isDev: boolean): string {
-	const scriptSrc = ["'self'", "'wasm-unsafe-eval'"]; // minimum, cannot add more
+	const scriptSrc = ["'self'"]; // minimum, cannot add more
 	const objectSrc = ["'self'"]; // standard
-	const connectSrc = ["'self'"]; // WebSocket goes here
+	// The LanguageTool server is chosen by the user, so any http(s) origin may be needed.
+	const connectSrc = ["'self'", 'https:', 'http:']; // WebSocket goes here
 	const styleSrc = ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'];
 	const fontSrc = ["'self'", 'https://fonts.gstatic.com', 'data:'];
 
@@ -24,8 +25,6 @@ export function makeExtensionCSP(isDev: boolean): string {
 		connectSrc.push('http://127.0.0.1:*', 'ws://127.0.0.1:*');
 		styleSrc.push('http://localhost:5173', 'http://127.0.0.1:*');
 	}
-
-	connectSrc.push('https://writewithharper.com');
 
 	// Assemble the semicolon-delimited CSP
 	return `${[
@@ -38,7 +37,7 @@ export function makeExtensionCSP(isDev: boolean): string {
 }
 
 export default defineManifest({
-	name: `Private Grammar Checker - Harper${isDev ? ' ➡️ Dev' : ''}`,
+	name: `Local Grammar Checker for LanguageTool${isDev ? ' ➡️ Dev' : ''}`,
 	description: packageData.description,
 	version: packageData.version,
 	manifest_version: 3,
@@ -48,7 +47,7 @@ export default defineManifest({
 	options_page: 'options.html',
 	browser_specific_settings: {
 		gecko: {
-			id: 'harper@writewithharper.com',
+			id: 'lt-local@oetiker.ch',
 			strict_min_version: '146.0',
 		},
 	},
@@ -80,7 +79,6 @@ export default defineManifest({
 		{
 			matches: ['<all_urls>'],
 			resources: [
-				'wasm/harper_wasm_bg.wasm',
 				'google-docs-bridge.js',
 				'google-docs-protocol.js',
 				'google-docs-bridge-request-handler.js',
@@ -94,5 +92,6 @@ export default defineManifest({
 	content_security_policy: {
 		extension_pages: makeExtensionCSP(isDev),
 	},
-	host_permissions: ['https://writewithharper.com/*'],
+	// Requested from the settings page for the origin of the configured server.
+	optional_host_permissions: ['https://*/*', 'http://*/*'],
 });

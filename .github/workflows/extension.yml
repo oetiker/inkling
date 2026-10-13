@@ -1,0 +1,48 @@
+name: Browser Extension
+
+on:
+  push:
+    branches: ["master"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".node-version"
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Lint
+        run: make install lint
+      - name: Type check
+        run: make check
+      - name: Unit tests
+        run: make test-unit
+      - name: Install Playwright browsers
+        run: cd packages/chrome-plugin && pnpm exec playwright install --with-deps chromium firefox
+      - name: Browser tests
+        run: make test-chromium test-firefox
+      - name: Build extensions
+        run: make chrome firefox
+      - name: Upload Chrome extension
+        uses: actions/upload-artifact@v7
+        with:
+          name: lt-local-chrome.zip
+          path: "packages/chrome-plugin/package/lt-local-chrome.zip"
+      - name: Upload Firefox extension
+        uses: actions/upload-artifact@v7
+        with:
+          name: lt-local-firefox.zip
+          path: "packages/chrome-plugin/package/lt-local-firefox.zip"
+      - name: Release artifacts
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          artifacts: "packages/chrome-plugin/package/*.zip"
+          allowUpdates: true
+          draft: true

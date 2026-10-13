@@ -10,7 +10,6 @@ const wrapperPath = path.resolve(__dirname, './vglrunWrapper.js');
  */
 export default defineConfig({
 	testDir: './tests',
-	testIgnore: ['**/google_docs*.spec.ts', '**/googleDocs*.spec.ts'],
 	fullyParallel: true,
 	/* Fail the build on CI if you accidentally left test.only in the source code. */
 	forbidOnly: !!process.env.CI,
@@ -27,18 +26,27 @@ export default defineConfig({
 	},
 	/** One hour */
 	globalTimeout: 3600000,
-	webServer: {
-		command: 'pnpm exec http-server ./tests/pages -p 8081 -a 127.0.0.1',
-		url: 'http://127.0.0.1:8081',
-		reuseExistingServer: true,
-		stdout: 'pipe',
-		stderr: 'pipe',
-	},
+	webServer: [
+		{
+			command: 'pnpm exec http-server ./tests/pages -p 18081 -a 127.0.0.1',
+			url: 'http://127.0.0.1:18081',
+			reuseExistingServer: true,
+			stdout: 'pipe',
+			stderr: 'pipe',
+		},
+		{
+			command: 'node ./tests/mockLanguageTool.mjs 18082',
+			url: 'http://127.0.0.1:18082',
+			reuseExistingServer: true,
+			stdout: 'pipe',
+			stderr: 'pipe',
+		},
+	],
 	/* Configure projects for major browsers */
 	projects: [
 		{
 			name: 'chromium',
-			workers: process.env.CI ? 1 : '50%',
+			workers: process.env.CI ? 1 : 4,
 			use: {
 				...devices['Desktop Chrome'],
 				launchOptions: {
@@ -56,7 +64,7 @@ export default defineConfig({
 		},
 		{
 			name: 'firefox',
-			workers: process.env.CI ? 1 : '50%',
+			workers: process.env.CI ? 1 : 4,
 			use: { ...devices['Desktop Firefox'] },
 		},
 	],

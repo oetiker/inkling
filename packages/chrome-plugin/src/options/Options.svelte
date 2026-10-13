@@ -1,44 +1,27 @@
 <script lang="ts">
 import { Button, Card, Input, Select, Textarea } from 'components';
-import {
-	Dialect,
-	type LintConfig,
-	type StructuredLintConfig,
-	type StructuredLintSetting,
-} from 'harper.js';
 import logo from '/logo.png';
 import ProtocolClient from '../ProtocolClient';
-import type { Hotkey, Modifier, WeirpackMeta } from '../protocol';
+import type { Hotkey, Modifier } from '../protocol';
 import { ActivationKey } from '../protocol';
-import StructuredRuleSettings from './StructuredRuleSettings.svelte';
 
-let lintConfig: LintConfig = $state({});
-let structuredLintConfig: StructuredLintConfig = $state({ settings: [] });
-let lintDescriptions: Record<string, string> = $state({});
-let searchQuery = $state('');
-let searchQueryLower = $derived(searchQuery.toLowerCase());
-let expandedGroups: Record<string, boolean> = $state({});
-let dialect = $state(Dialect.American);
-let isolateEnglish = $state(false);
+let serverUrl = $state('');
+let preferredVariants = $state('');
+let serverStatus: { ok: boolean; message: string } | null = $state(null);
+let serverBusy = $state(false);
+let disabledRules = $state('');
+let disabledRulesLoaded = $state(false);
 let delay = $state(0);
 let delayLoaded = $state(false);
 let defaultEnabled = $state(false);
+let defaultEnabledLoaded = $state(false);
 let activationKey: ActivationKey = $state(ActivationKey.Off);
+let activationKeyLoaded = $state(false);
 let userDict = $state('');
+let userDictLoaded = $state(false);
+let ignoredCleared = $state(false);
 let modifyHotkeyButton: Button;
 let hotkey: Hotkey = $state({ modifiers: ['Ctrl'], key: 'e' });
-let anyRulesEnabled = $derived(Object.values(lintConfig ?? {}).some((value) => value !== false));
-let weirpacks: WeirpackMeta[] = $state([]);
-let weirpackBusy = $state(false);
-let weirpackError = $state('');
-
-$effect(() => {
-	ProtocolClient.setLintConfig($state.snapshot(lintConfig));
-});
-
-$effect(() => {
-	ProtocolClient.setDialect(dialect);
-});
 
 $effect(() => {
 	if (delayLoaded) {
@@ -47,33 +30,37 @@ $effect(() => {
 });
 
 $effect(() => {
-	ProtocolClient.setDefaultEnabled(defaultEnabled);
+	if (defaultEnabledLoaded) {
+		ProtocolClient.setDefaultEnabled(defaultEnabled);
+	}
 });
 
 $effect(() => {
-	ProtocolClient.setActivationKey(activationKey);
+	if (activationKeyLoaded) {
+		ProtocolClient.setActivationKey(activationKey);
+	}
 });
 
 $effect(() => {
-	ProtocolClient.setUserDictionary(stringToDict(userDict));
+	if (userDictLoaded) {
+		ProtocolClient.setUserDictionary(stringToList(userDict));
+	}
 });
 
-Promise.all([
-	ProtocolClient.getLintConfig(),
-	ProtocolClient.getStructuredLintConfig(),
-	ProtocolClient.getLintDescriptions(),
-]).then(([nextLintConfig, nextStructuredConfig, nextLintDescriptions]) => {
-	lintConfig = nextLintConfig;
-	structuredLintConfig = nextStructuredConfig;
-	lintDescriptions = nextLintDescriptions;
+$effect(() => {
+	if (disabledRulesLoaded) {
+		ProtocolClient.setDisabledRules(stringToList(disabledRules));
+	}
 });
 
-ProtocolClient.getDialect().then((d) => {
-	dialect = d;
+ProtocolClient.getServerSettings().then((s) => {
+	serverUrl = s.serverUrl;
+	preferredVariants = s.preferredVariants;
 });
 
-ProtocolClient.getIsolateEnglish().then((value) => {
-	isolateEnglish = value;
+ProtocolClient.getDisabledRules().then((rules) => {
+	disabledRules = listToString(rules);
+	disabledRulesLoaded = true;
 });
 
 ProtocolClient.getDelay().then((value) => {
@@ -83,10 +70,12 @@ ProtocolClient.getDelay().then((value) => {
 
 ProtocolClient.getDefaultEnabled().then((d) => {
 	defaultEnabled = d;
+	defaultEnabledLoaded = true;
 });
 
 ProtocolClient.getActivationKey().then((d) => {
 	activationKey = d;
+	activationKeyLoaded = true;
 });
 
 ProtocolClient.getHotkey().then((d) => {
@@ -98,139 +87,75 @@ ProtocolClient.getHotkey().then((d) => {
 });
 
 ProtocolClient.getUserDictionary().then((d) => {
-	userDict = dictToString(d.toSorted());
+	userDict = listToString(d.toSorted());
+	userDictLoaded = true;
 });
 
-ProtocolClient.getWeirpacks().then((stored) => {
-	weirpacks = stored.toSorted((a, b) => b.installedAt.localeCompare(a.installedAt));
-});
-
-/** Converts the content of a text area to viable dictionary values. */
-export function stringToDict(s: string): string[] {
+/** Converts the content of a text area to a list with one entry per line. */
+function stringToList(s: string): string[] {
 	return s
 		.split('\n')
 		.map((s) => s.trim())
 		.filter((v) => v.length > 0);
 }
 
-/** Converts the content of a text area to viable dictionary values. */
-export function dictToString(values: string[]): string {
+function listToString(values: string[]): string {
 	return values.map((v) => v.trim()).join('\n');
 }
 
-function resetRulesToDefaults(): void {
-	const keys = Object.keys(lintConfig ?? {});
-	if (keys.length === 0) return;
-
-	const nextConfig: LintConfig = { ...lintConfig };
-	for (const key of keys) {
-		nextConfig[key] = null;
+/** The origin pattern to request host access for, or null for an invalid URL. */
+function originPattern(url: string): string | null {
+	try {
+		const parsed = new URL(url.trim());
+		if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+			return null;
+		}
+		return `${parsed.protocol}//${parsed.hostname}/*`;
+	} catch {
+		return null;
 	}
-	lintConfig = nextConfig;
 }
 
-function updateAllRules(enabled: boolean): void {
-	const keys = Object.keys(lintConfig ?? {});
-	if (keys.length === 0) {
-		return;
-	}
+async function saveServer() {
+	serverStatus = null;
 
-	const nextConfig: LintConfig = { ...lintConfig };
-	for (const key of keys) {
-		nextConfig[key] = enabled;
-	}
-	lintConfig = nextConfig;
-}
-
-function toggleAllRules(): void {
-	updateAllRules(!anyRulesEnabled);
-}
-
-function collectStructuredRuleNames(settings: StructuredLintSetting[]): string[] {
-	const out: string[] = [];
-
-	for (const setting of settings) {
-		if ('Bool' in setting) {
-			out.push(setting.Bool.name);
-			continue;
+	const trimmed = serverUrl.trim();
+	if (trimmed.length > 0) {
+		const pattern = originPattern(trimmed);
+		if (pattern == null) {
+			serverStatus = { ok: false, message: 'Enter a URL that starts with https:// or http://.' };
+			return;
 		}
 
-		if ('OneOfMany' in setting) {
-			out.push(...setting.OneOfMany.names);
-			continue;
+		// Must run first, while the click still counts as a user gesture.
+		const granted = await chrome.permissions.request({ origins: [pattern] });
+		if (!granted) {
+			serverStatus = {
+				ok: false,
+				message: 'The browser did not grant access to this server. The setting was not saved.',
+			};
+			return;
 		}
-
-		out.push(...collectStructuredRuleNames(setting.Group.child.settings));
 	}
 
-	return out;
-}
-
-function buildDisplaySettings(
-	structured: StructuredLintConfig,
-	flat: LintConfig,
-): StructuredLintSetting[] {
-	const settings = [...(structured.settings ?? [])];
-	const knownRules = new Set(collectStructuredRuleNames(settings));
-	const extraRuleNames = Object.keys(flat)
-		.filter((name) => !knownRules.has(name))
-		.sort();
-
-	if (extraRuleNames.length === 0) {
-		return settings;
+	serverBusy = true;
+	try {
+		await ProtocolClient.setServerSettings({ serverUrl: trimmed, preferredVariants });
+		serverStatus =
+			trimmed.length > 0
+				? await ProtocolClient.testServer(trimmed)
+				: { ok: true, message: 'Checking is off until you set a server.' };
+	} finally {
+		serverBusy = false;
 	}
-
-	settings.push({
-		Group: {
-			label: 'Additional Rules',
-			description: 'Rules present in the flat config but not yet assigned to a curated category.',
-			child: {
-				settings: extraRuleNames.map(
-					(name) =>
-						({
-							Bool: {
-								name,
-								state: flat[name] ?? false,
-								label: name,
-							},
-						}) as StructuredLintSetting,
-				),
-			},
-		},
-	});
-
-	return settings;
 }
 
-let displayStructuredSettings: StructuredLintSetting[] = $state([]);
-
-$effect(() => {
-	displayStructuredSettings = buildDisplaySettings(structuredLintConfig, lintConfig);
-});
-
-function updateLintConfig(nextConfig: LintConfig) {
-	lintConfig = nextConfig;
+async function clearIgnored() {
+	await ProtocolClient.clearIgnoredLints();
+	ignoredCleared = true;
 }
 
-function setIsolateEnglishFromCheckbox(event: Event): void {
-	const input = event.currentTarget;
-	if (!(input instanceof HTMLInputElement)) {
-		console.warn('Could not update isolate English setting: missing checkbox input.');
-		return;
-	}
-
-	isolateEnglish = input.checked;
-	ProtocolClient.setIsolateEnglish(input.checked);
-}
-
-function toggleGroup(groupKey: string) {
-	expandedGroups = {
-		...expandedGroups,
-		[groupKey]: !expandedGroups[groupKey],
-	};
-}
-
-async function exportEnabledDomainsCSV() {
+async function exportEnabledDomainsJSON() {
 	try {
 		const enabledDomains = await ProtocolClient.getEnabledDomains();
 		const json = JSON.stringify(enabledDomains, null, 2);
@@ -291,51 +216,6 @@ function startHotkeyCapture(_modifyHotkeyButton: Button) {
 	// Add temporary key listener
 	window.addEventListener('keydown', handleKeydown);
 }
-
-async function refreshWeirpacks() {
-	const stored = await ProtocolClient.getWeirpacks();
-	weirpacks = stored.toSorted((a, b) => b.installedAt.localeCompare(a.installedAt));
-}
-
-async function handleWeirpackUpload(event: Event) {
-	const input = event.currentTarget as HTMLInputElement | null;
-	const files = input?.files;
-	if (!files || files.length === 0) {
-		return;
-	}
-
-	weirpackError = '';
-	weirpackBusy = true;
-	try {
-		for (const file of files) {
-			const bytes = new Uint8Array(await file.arrayBuffer());
-			await ProtocolClient.addWeirpack(file.name, bytes);
-		}
-		await refreshWeirpacks();
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to upload Weirpack.';
-		weirpackError = message;
-	} finally {
-		weirpackBusy = false;
-		input.value = '';
-	}
-}
-
-async function removeWeirpack(id: string) {
-	weirpackBusy = true;
-	weirpackError = '';
-	try {
-		await ProtocolClient.removeWeirpack(id);
-		await refreshWeirpacks();
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to remove Weirpack.';
-		weirpackError = message;
-	} finally {
-		weirpackBusy = false;
-	}
-}
-
-// Import removed
 </script>
 
 <!-- centered wrapper with side gutters -->
@@ -343,47 +223,72 @@ async function removeWeirpack(id: string) {
   <div class="mx-auto max-w-screen-lg space-y-4">
     <Card class="flex items-center gap-3">
       <div class="flex h-9 w-9 items-center justify-center rounded-xl">
-        <img src={logo} alt="Harper logo" class="h-5 w-auto" />
+        <img src={logo} alt="" class="h-5 w-auto" />
       </div>
       <div class="flex flex-col">
-        <h1 class="text-base tracking-wide font-serif">Harper</h1>
+        <h1 class="text-base tracking-wide font-serif">{chrome.runtime.getManifest().name}</h1>
         <p class="text-xs">Settings</p>
+      </div>
+    </Card>
+
+    <!-- ── SERVER ────────────────────────────── -->
+    <Card class="space-y-6">
+      <h2 class="pb-1 text-xs uppercase tracking-wider">LanguageTool Server</h2>
+
+      <div class="space-y-5">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex flex-col">
+            <h3 class="text-sm">Server URL</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              For example <code>https://lt.example.com</code> or
+              <code>http://localhost:8081</code>. Leave empty to turn checking off.
+            </p>
+          </div>
+          <Input
+            size="sm"
+            class="w-72"
+            placeholder="https://lt.example.com"
+            data-testid="server-url"
+            bind:value={serverUrl}
+          />
+        </div>
+      </div>
+
+      <div class="space-y-5">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex flex-col">
+            <h3 class="text-sm">Preferred Variants</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              Comma-separated, for example <code>de-CH,en-GB</code>. The server
+              uses them when it detects the language of a text.
+            </p>
+          </div>
+          <Input
+            size="sm"
+            class="w-72"
+            placeholder="de-CH,en-GB"
+            data-testid="preferred-variants"
+            bind:value={preferredVariants}
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4">
+        <p
+          class="text-xs {serverStatus?.ok === false ? 'text-red-700 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}"
+          data-testid="server-status"
+        >
+          {#if serverStatus}
+            {serverStatus.ok ? `Connected: ${serverStatus.message}` : serverStatus.message}
+          {/if}
+        </p>
+        <Button size="sm" disabled={serverBusy} on:click={saveServer}>Save and Test</Button>
       </div>
     </Card>
 
     <!-- ── GENERAL ───────────────────────────── -->
     <Card class="space-y-6">
       <h2 class="pb-1 text-xs uppercase tracking-wider">General</h2>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <h3 class="text-sm">English Dialect</h3>
-          <Select size="sm" class="w-44" bind:value={dialect}>
-            <option value={Dialect.American}>🇺🇸 American</option>
-            <option value={Dialect.British}>🇬🇧 British</option>
-            <option value={Dialect.Australian}>🇦🇺 Australian</option>
-            <option value={Dialect.Canadian}>🇨🇦 Canadian</option>
-            <option value={Dialect.Indian}>🇮🇳 Indian</option>
-          </Select>
-        </div>
-      </div>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Ignore Non-English Text</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Skip text that Harper detects as not English.
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            checked={isolateEnglish}
-            onchange={setIsolateEnglishFromCheckbox}
-            class="h-5 w-5"
-          />
-        </div>
-      </div>
 
       <div class="space-y-5">
         <div class="flex items-center justify-between">
@@ -406,8 +311,8 @@ async function removeWeirpack(id: string) {
           <div class="flex flex-col">
             <h3 class="text-sm">Delay</h3>
             <p class="text-xs text-gray-600 dark:text-gray-400">
-              Wait this many milliseconds after typing stops before refreshing
-              highlights.
+              Wait this many milliseconds after typing stops before checking
+              the text again.
             </p>
           </div>
           <input
@@ -428,7 +333,7 @@ async function removeWeirpack(id: string) {
               Downloads JSON of domains explicitly enabled.
             </p>
           </div>
-          <Button size="sm" on:click={exportEnabledDomainsCSV}
+          <Button size="sm" on:click={exportEnabledDomainsJSON}
             >Export JSON</Button
           >
         </div>
@@ -439,7 +344,7 @@ async function removeWeirpack(id: string) {
           <div class="flex flex-col">
             <h3 class="text-sm">Activation Key</h3>
             <p class="text-xs text-gray-600 dark:text-gray-400">
-              If you're finding that you're accidentally triggering Harper.
+              Show highlights only after you press this key twice.
             </p>
           </div>
           <Select size="sm" class="w-44" bind:value={activationKey}>
@@ -477,7 +382,8 @@ async function removeWeirpack(id: string) {
           <div class="flex flex-col">
             <h3 class="text-sm">User Dictionary</h3>
             <p class="text-xs text-gray-600 dark:text-gray-400">
-              Each word should be on its own line.
+              Each word should be on its own line. These words are never
+              marked as spelling mistakes.
             </p>
           </div>
           <Textarea bind:value={userDict}></Textarea>
@@ -485,97 +391,35 @@ async function removeWeirpack(id: string) {
       </div>
     </Card>
 
-    <Card class="space-y-4">
-      <h2 class="pb-1 text-xs uppercase tracking-wider">Weirpacks</h2>
-
-      <div class="space-y-2 flex flex-row w-full justify-between">
-        <p class="text-xs text-gray-600 dark:text-gray-400">
-          Upload one or more <code>.weirpack</code> files to add custom rule
-          packs.
-          <a href="https://writewithharper.com/docs/weir#Weirpacks"
-            >What is a Weirpack?</a
-          >
-        </p>
-        <input
-          type="file"
-          accept=".weirpack,application/zip"
-          multiple
-          disabled={weirpackBusy}
-          onchange={handleWeirpackUpload}
-          class="block w-1/4 text-sm file:rounded-md file:border-0 file:bg-primary file:text-white disabled:opacity-50"
-        />
-      </div>
-
-      {#if weirpackError}
-        <p class="text-xs text-red-700 dark:text-red-400">{weirpackError}</p>
-      {/if}
-
-      {#if weirpacks.length === 0}
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          No Weirpacks installed.
-        </p>
-      {:else}
-        <div class="space-y-3">
-          {#each weirpacks as weirpack}
-            <div
-              class="flex items-center justify-between gap-3 rounded-md border border-primary-100 p-3"
-            >
-              <div class="min-w-0">
-                <p class="truncate text-sm">
-                  {weirpack.name}{weirpack.version
-                    ? ` v${weirpack.version}`
-                    : ""}
-                </p>
-                <p class="truncate text-xs text-gray-600 dark:text-gray-400">
-                  {weirpack.filename}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                color="light"
-                disabled={weirpackBusy}
-                on:click={() => removeWeirpack(weirpack.id)}
-              >
-                Remove
-              </Button>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </Card>
-
     <!-- ── RULES ─────────────────────────────── -->
-    <Card class="space-y-4">
-      <div class="flex items-center justify-between gap-4">
-        <h2 class="text-xs uppercase tracking-wider">Rules</h2>
-        <Input
-          bind:value={searchQuery}
-          placeholder="Search for a rule…"
-          size="sm"
-          class="w-60"
-        />
-      </div>
-      <div class="flex flex-wrap gap-3">
-        <Button size="sm" on:click={resetRulesToDefaults}
-          >Reset to Default Rules</Button
-        >
-        <Button size="sm" on:click={toggleAllRules}>
-          {anyRulesEnabled ? "Disable All Rules" : "Enable All Rules"}
-        </Button>
+    <Card class="space-y-6">
+      <h2 class="pb-1 text-xs uppercase tracking-wider">Rules</h2>
+
+      <div class="space-y-5">
+        <div class="flex items-center justify-between">
+          <div class="flex flex-col">
+            <h3 class="text-sm">Disabled Rules</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              LanguageTool rule IDs, one per line. "Disable rule" in a
+              suggestion adds its rule here.
+            </p>
+          </div>
+          <Textarea data-testid="disabled-rules" bind:value={disabledRules}></Textarea>
+        </div>
       </div>
 
-      <div class="rule-scroll space-y-4 max-h-80 overflow-y-auto pr-1">
-        {#key displayStructuredSettings.length}
-          <StructuredRuleSettings
-            settings={displayStructuredSettings}
-            {lintConfig}
-            {lintDescriptions}
-            {searchQueryLower}
-            {expandedGroups}
-            handleLintConfigChange={updateLintConfig}
-            handleToggleGroup={toggleGroup}
-          />
-        {/key}
+      <div class="space-y-5">
+        <div class="flex items-center justify-between">
+          <div class="flex flex-col">
+            <h3 class="text-sm">Ignored Suggestions</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              Show all suggestions again that you ignored.
+            </p>
+          </div>
+          <Button size="sm" disabled={ignoredCleared} on:click={clearIgnored}>
+            {ignoredCleared ? 'Cleared' : 'Clear'}
+          </Button>
+        </div>
       </div>
     </Card>
   </div>

@@ -1,3 +1,0 @@
-|===
-| Cell 1 | Cell 2, but with a typo: errorr
-|===

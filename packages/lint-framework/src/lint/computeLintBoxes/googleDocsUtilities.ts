@@ -1,5 +1,5 @@
-import type { Span } from 'harper.js';
 import { leafNodes } from '../domUtils';
+import type { Span } from '../types';
 import type { UnpackedLint, UnpackedSpan } from '../unpackLint';
 
 type GoogleDocsReplacePayload = {

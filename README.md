@@ -1,67 +1,64 @@
-<div id="header" align="center">
-    <img src="logo.svg" width="400px" />
-    <h1>Harper</h1>
-</div>
+# Local Grammar Checker for LanguageTool
 
-[![Harper Binaries](https://github.com/automattic/harper/actions/workflows/binaries.yml/badge.svg)](https://github.com/automattic/harper/actions/workflows/binaries.yml)
-[![Website](https://github.com/automattic/harper/actions/workflows/build_web.yml/badge.svg)](https://github.com/automattic/harper/actions/workflows/build_web.yml)
-[![Checks](https://github.com/automattic/harper/actions/workflows/just_checks.yml/badge.svg)](https://github.com/automattic/harper/actions/workflows/just_checks.yml)
-[![Crates.io](https://img.shields.io/crates/v/harper-ls)](https://crates.io/crates/harper-ls)
-![NPM Version](https://img.shields.io/npm/v/harper.js)
-![Downloads](https://img.shields.io/github/downloads/automattic/harper/total?label=Binary+Downloads)
-![Obsidian Plugin Downloads](https://img.shields.io/github/downloads/automattic/harper-obsidian-plugin/total?label=Obsidian+Plugin+Downloads)
+A Chrome and Firefox extension that checks what you type on web pages with
+your own [LanguageTool](https://github.com/languagetool-org/languagetool)
+server. Text goes only to the server you configure.
 
-Harper is an English grammar checker designed to be _just right._
-I created it after years of dealing with the shortcomings of the competition.
+It is a fork of the browser extension of
+[Harper](https://github.com/Automattic/harper) (Apache-2.0), based on Harper
+commit `6bb9b661`. The fork keeps Harper's page integration (highlights,
+suggestion popup, editor support) and replaces Harper's built-in English
+checker with requests to a LanguageTool server. Everything else from the
+Harper repository was removed.
 
-Grammarly was too expensive and too overbearing.
-Its suggestions lacked context, and were often just plain _wrong_.
-Not to mention: it's a privacy nightmare.
-Everything you write with Grammarly is sent to their servers.
-Their privacy policy claims they don't sell the data, but that doesn't mean they don't use it to train large language models and god knows what else.
-Not only that, but the round-trip-time of the network request makes revising your work all the more tedious.
+This project is not affiliated with LanguageTooler GmbH or with Automattic.
 
-LanguageTool is great, if you have gigabytes of RAM to spare and are willing to download the ~16GB n-gram dataset.
-Besides the memory requirements, I found LanguageTool too slow: it would take several seconds to lint even a moderate-size document.
+## Install
 
-That's why I created Harper: it is the grammar checker that fits my needs.
-Not only does it take milliseconds to lint a document, take less than 1/50th of LanguageTool's memory footprint,
-but it is also completely private.
+```sh
+make chrome    # packages/chrome-plugin/package/lt-local-chrome.zip
+make firefox   # packages/chrome-plugin/package/lt-local-firefox.zip
+```
 
-Harper is even small enough to load via [WebAssembly.](https://writewithharper.com)
+Load the unpacked `packages/chrome-plugin/build` directory in
+`chrome://extensions` (developer mode), or the zip in `about:debugging` in
+Firefox.
 
-## Language Support
+To ship a build with a server already set:
 
-Harper currently only supports English, but the core is extensible to support other languages, so we welcome contributions that allow for other language support.
+```sh
+LT_DEFAULT_SERVER_URL=https://lt.example.com make chrome
+```
 
-## Performance Issues
+## Settings
 
-We consider long lint times bugs.
-If you encounter any significant performance issues, please create an issue on the topic.
+- `Server URL`: Base URL of the LanguageTool server, for example
+  `https://lt.example.com` or `http://localhost:8081`. Empty turns checking off.
+  Saving asks the browser for access to that server.
+- `Preferred Variants`: Comma-separated variants such as `de-CH,en-GB`. The
+  server uses them when it detects the language of a text.
+- `Enable on New Sites by Default`: Off by default. Checking runs only on the
+  sites in the built-in list and on sites you switch on in the popup.
+- `Delay`: Milliseconds to wait after typing stops before the text is sent to
+  the server. Default 500.
+- `Disabled Rules`: LanguageTool rule IDs, one per line. "Disable rule" in a
+  suggestion adds its rule here.
+- `User Dictionary`: Words that are never marked as spelling mistakes.
 
-If you find a fix to any performance issue, we would appreciate the contribution.
-Just please make sure to read [our contribution guidelines first.](https://writewithharper.com/docs/contributors/introduction)
+## Development
 
-## Links
+```sh
+make check       # TypeScript and Svelte checks
+make lint        # Biome
+make test-unit   # connector tests, no browser needed
+make test        # unit tests plus Playwright tests in Chromium and Firefox
+```
 
-- [Frequently Asked Questions](https://writewithharper.com/#faqs)
-- [Obsidian Documentation](https://writewithharper.com/docs/integrations/obsidian)
-- [`harper-ls` Documentation](https://writewithharper.com/docs/integrations/language-server)
-- Supported Editors' Documentation
-  - [Visual Studio Code](https://writewithharper.com/docs/integrations/visual-studio-code)
-  - [Neovim](https://writewithharper.com/docs/integrations/neovim)
-  - [Helix](https://writewithharper.com/docs/integrations/helix)
-  - [Emacs](https://writewithharper.com/docs/integrations/emacs)
-  - [Zed](https://writewithharper.com/docs/integrations/zed)
-- [`harper.js` Documentation](https://writewithharper.com/docs/harperjs/introduction)
-- [Official Discord Server](https://discord.com/invite/JBqcAaKrzQ)
+The Playwright tests run headed under `xvfb-run` against a stand-in server in
+`packages/chrome-plugin/tests/mockLanguageTool.mjs`. Set `LT_TEST_SERVER` to run
+the Chromium test against a real server.
 
-## Huge Thanks
+## License
 
-This project would not be possible without the hard work from those who [contribute](https://writewithharper.com/docs/contributors/introduction).
-
-<a href="https://github.com/automattic/harper/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=automattic/harper" />
-</a>
-
-Harper's logo was designed by [Lukas Werner](https://lukaswerner.com/).
+Apache-2.0, see [LICENSE](LICENSE). Copyright for the original code remains with
+the Harper authors.

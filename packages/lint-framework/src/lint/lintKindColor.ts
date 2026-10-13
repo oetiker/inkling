@@ -1,7 +1,7 @@
-import type { LintKind } from 'harper.js';
+import type { LintKind } from './types';
 import { getContrastingTextColor } from './utils';
 
-export type { LintKind } from 'harper.js';
+export type { LintKind } from './types';
 
 // First, define the color map as a constant
 const LINT_KIND_COLORS = {

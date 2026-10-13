@@ -7,5 +7,5 @@ export { default as LintFramework } from './lint/LintFramework';
 export * from './lint/lintKindColor';
 export { default as PopupHandler } from './lint/PopupHandler';
 export { default as RenderBox } from './lint/RenderBox';
+export * from './lint/types';
 export * from './lint/unpackLint';
-export { default as unpackLint } from './lint/unpackLint';

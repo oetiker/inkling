@@ -1,0 +1,5 @@
+- New: suggestions in web pages now come from a LanguageTool server set under `Server URL` in the settings, so German and the other LanguageTool languages are checked. Harper's built-in English checker is gone.
+- New settings `Preferred Variants` (for example `de-CH`), `Disabled Rules` and a `Clear` button for ignored suggestions. "Disable rule" in a suggestion now disables the LanguageTool rule.
+- The extension no longer contacts writewithharper.com: the version check, the site and lint feedback forms, the review banner and the install and uninstall pages are removed.
+- Checking waits 500 ms after typing stops by default (was 0), so the server gets one request per pause instead of one per keystroke.
+- The popup now strips a leading `www.` from the site name it shows.
