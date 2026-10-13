@@ -37,7 +37,7 @@ export function makeExtensionCSP(isDev: boolean): string {
 }
 
 export default defineManifest({
-	name: `Local Grammar Checker for LanguageTool${isDev ? ' ➡️ Dev' : ''}`,
+	name: `Inkling${isDev ? ' ➡️ Dev' : ''}`,
 	description: packageData.description,
 	version: packageData.version,
 	manifest_version: 3,
@@ -47,7 +47,7 @@ export default defineManifest({
 	options_page: 'options.html',
 	browser_specific_settings: {
 		gecko: {
-			id: 'lt-local@oetiker.ch',
+			id: 'inkling@oetiker.ch',
 			strict_min_version: '146.0',
 		},
 	},

@@ -32,13 +32,13 @@ jobs:
       - name: Upload Chrome extension
         uses: actions/upload-artifact@v7
         with:
-          name: lt-local-chrome.zip
-          path: "packages/chrome-plugin/package/lt-local-chrome.zip"
+          name: inkling-chrome.zip
+          path: "packages/chrome-plugin/package/inkling-chrome.zip"
       - name: Upload Firefox extension
         uses: actions/upload-artifact@v7
         with:
-          name: lt-local-firefox.zip
-          path: "packages/chrome-plugin/package/lt-local-firefox.zip"
+          name: inkling-firefox.zip
+          path: "packages/chrome-plugin/package/inkling-firefox.zip"
       - name: Release artifacts
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         if: startsWith(github.ref, 'refs/tags/v')

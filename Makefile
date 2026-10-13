@@ -16,11 +16,11 @@ deps: install
 	cd packages/components && pnpm build
 	cd packages/lint-framework && pnpm build
 
-## Build build/ and package/lt-local-chrome.zip
+## Build build/ and package/inkling-chrome.zip
 chrome: deps
 	cd $(EXT) && pnpm zip-for-chrome
 
-## Build build/ and package/lt-local-firefox.zip
+## Build build/ and package/inkling-firefox.zip
 firefox: deps
 	cd $(EXT) && pnpm zip-for-firefox
 

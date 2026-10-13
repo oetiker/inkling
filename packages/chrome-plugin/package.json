@@ -1,6 +1,6 @@
 {
-	"name": "lt-local-extension",
-	"displayName": "Local Grammar Checker for LanguageTool",
+	"name": "inkling",
+	"displayName": "Inkling",
 	"version": "0.1.0",
 	"author": "Tobias Oetiker",
 	"description": "Checks what you write in the browser with your own LanguageTool server",
@@ -22,8 +22,8 @@
 		"check:config": "tsc --noEmit --project tsconfig.node.json",
 		"check:svelte": "svelte-check --tsconfig ./tsconfig.json",
 		"preview": "vite preview",
-		"zip-for-chrome": "TARGET_BROWSER=chrome pnpm run build && node src/zip.js lt-local-chrome.zip",
-		"zip-for-firefox": "TARGET_BROWSER=firefox pnpm run build && node src/zip.js lt-local-firefox.zip",
+		"zip-for-chrome": "TARGET_BROWSER=chrome pnpm run build && node src/zip.js inkling-chrome.zip",
+		"zip-for-firefox": "TARGET_BROWSER=firefox pnpm run build && node src/zip.js inkling-firefox.zip",
 		"test": "playwright test --headed",
 		"test:unit": "node --test --experimental-transform-types --disable-warning=ExperimentalWarning 'unit/*.test.ts'"
 	},

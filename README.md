@@ -1,6 +1,6 @@
-# Local Grammar Checker for LanguageTool
+# Inkling
 
-A Chrome and Firefox extension that checks what you type on web pages with
+Inkling is a Chrome and Firefox extension that checks what you type on web pages with
 your own [LanguageTool](https://github.com/languagetool-org/languagetool)
 server. Text goes only to the server you configure.
 
@@ -16,8 +16,8 @@ This project is not affiliated with LanguageTooler GmbH or with Automattic.
 ## Install
 
 ```sh
-make chrome    # packages/chrome-plugin/package/lt-local-chrome.zip
-make firefox   # packages/chrome-plugin/package/lt-local-firefox.zip
+make chrome    # packages/chrome-plugin/package/inkling-chrome.zip
+make firefox   # packages/chrome-plugin/package/inkling-firefox.zip
 ```
 
 Load the unpacked `packages/chrome-plugin/build` directory in
