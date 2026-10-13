@@ -5,7 +5,7 @@ EXT := packages/extension
 # Playwright runs Chromium extensions only in headed mode; xvfb-run gives it a display.
 HEADED := xvfb-run -a
 
-.PHONY: all install deps chrome firefox check lint test test-unit test-chromium test-firefox clean
+.PHONY: all install deps chrome firefox check lint test test-unit test-chromium test-firefox clean icons
 
 all: chrome firefox
 
@@ -42,6 +42,12 @@ test-chromium: deps
 test-firefox: deps
 	cd $(EXT) && LT_DEFAULT_SERVER_URL=http://127.0.0.1:18082 TARGET_BROWSER=firefox pnpm build
 	cd $(EXT) && LT_DEFAULT_SERVER_URL=http://127.0.0.1:18082 $(HEADED) pnpm exec playwright test --headed --project=firefox
+
+## Redraw the icon and logo from scripts/icon.py and render the PNG sizes (needs inkscape)
+icons:
+	python3 $(EXT)/scripts/icon.py
+	inkscape $(EXT)/public/logo.svg -o $(EXT)/public/logo.png -w 512
+	for s in 16 32 48 128; do inkscape $(EXT)/public/logo.svg -o $(EXT)/public/icon-$$s.png -w $$s; done
 
 clean:
 	rm -rf $(EXT)/build $(EXT)/package packages/components/dist packages/lint-framework/dist
