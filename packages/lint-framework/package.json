@@ -21,8 +21,6 @@
 		"test": "echo 'no tests'"
 	},
 	"dependencies": {
-		"@fortawesome/fontawesome-svg-core": "^7.3.1",
-		"@fortawesome/free-solid-svg-icons": "^7.3.1",
 		"colorjs.io": "^0.5.2",
 		"virtual-dom": "^2.1.1"
 	},

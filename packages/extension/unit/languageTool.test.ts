@@ -69,7 +69,46 @@ describe('matchesToLintGroups', () => {
 		]);
 
 		assert.equal(groups.DASS_MIT_VERB[0].problem_text, 'dass');
-		assert.equal(groups.DASS_MIT_VERB[0].lint_kind, 'WordChoice');
+		assert.equal(groups.DASS_MIT_VERB[0].lint_kind, 'Grammar');
+	});
+
+	it('sorts every match into one of three color groups', () => {
+		// Issue types and categories as lt.oetiker.ch and the LanguageTool rule files report them.
+		const cases: [string | undefined, string, string][] = [
+			['misspelling', 'TYPOS', 'Spelling'],
+			// A real word in the wrong place is grammar in every language, even where English calls it a misspelling.
+			['misspelling', 'CONFUSED_WORDS', 'Grammar'],
+			['misspelling', 'NONSTANDARD_PHRASES', 'Grammar'],
+			['uncategorized', 'CONFUSED_WORDS', 'Grammar'],
+			['duplication', 'MISC', 'Spelling'],
+			['duplication', 'REDUNDANCY', 'Spelling'],
+			['uncategorized', 'TYPOS', 'Spelling'],
+			['misspelling', 'MULTITOKEN_SPELLING', 'Spelling'],
+			['style', 'STYLE', 'Style'],
+			['register', 'MISC', 'Style'],
+			['locale-violation', 'MISC', 'Style'],
+			['uncategorized', 'REDUNDANCY', 'Style'],
+			['uncategorized', 'COLLOQUIALISMS', 'Style'],
+			['uncategorized', 'GENDER_NEUTRALITY', 'Style'],
+			[undefined, 'CREATIVE_WRITING', 'Style'],
+			['uncategorized', 'WIKIPEDIA', 'Style'],
+			['uncategorized', 'HILFESTELLUNG_KOMMASETZUNG', 'Grammar'],
+			['uncategorized', 'AGREEMENT', 'Grammar'],
+			['uncategorized', 'COMPOUNDING', 'Grammar'],
+			['typographical', 'PUNCTUATION', 'Grammar'],
+			['whitespace', 'TYPOGRAPHY', 'Grammar'],
+			[undefined, 'SOMETHING_NEW', 'Grammar'],
+		];
+		for (const [issueType, category, kind] of cases) {
+			const groups = matchesToLintGroups('a b', [
+				match({
+					offset: 0,
+					length: 1,
+					rule: { id: 'R', issueType, category: { id: category, name: 'x' } },
+				}),
+			]);
+			assert.equal(groups.R[0].lint_kind, kind, `${issueType} / ${category}`);
+		}
 	});
 
 	it('escapes HTML in messages', () => {

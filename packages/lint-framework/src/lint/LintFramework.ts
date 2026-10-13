@@ -7,7 +7,7 @@ import Highlights from './Highlights';
 import PopupHandler from './PopupHandler';
 import { remapLintToCurrentSource } from './spanMapping';
 import type { LintOptions } from './types';
-import type { UnpackedLint, UnpackedLintGroups } from './unpackLint';
+import type { UnpackedLintGroups } from './unpackLint';
 
 type ActivationKey = 'off' | 'shift' | 'control';
 
@@ -25,7 +25,6 @@ type FrameworkActions = {
 	getDelay?: () => Promise<number>;
 	openOptions?: () => Promise<void>;
 	addToUserDictionary?: (words: string[]) => Promise<void>;
-	reportError?: (lint: UnpackedLint, ruleId: string) => Promise<void>;
 	setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
 };
 
@@ -83,7 +82,6 @@ export default class LintFramework {
 			getActivationKey: actions.getActivationKey,
 			openOptions: actions.openOptions,
 			addToUserDictionary: actions.addToUserDictionary,
-			reportError: actions.reportError,
 			setRuleEnabled: actions.setRuleEnabled,
 		});
 		this.targets = new Set();

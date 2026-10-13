@@ -130,40 +130,49 @@ export function matchesToLintGroups(
 	return groups;
 }
 
-/** Map a LanguageTool category to the closest Harper lint kind, which sets the highlight color. */
+const STYLE_ISSUE_TYPES = new Set(['style', 'register', 'locale-violation']);
+const SPELLING_CATEGORIES = new Set(['TYPOS', 'MULTITOKEN_SPELLING']);
+// English reports confused words as misspellings, German and French do not.
+// They are real words in the wrong place, so they count as grammar everywhere.
+const CONFUSION_CATEGORIES = new Set(['CONFUSED_WORDS', 'NONSTANDARD_PHRASES']);
+// Most rules in these categories also carry the issue type `style`; the list
+// catches the few that set none.
+const STYLE_CATEGORIES = new Set([
+	'STYLE',
+	'REDUNDANCY',
+	'REPETITIONS_STYLE',
+	'COLLOQUIALISMS',
+	'PLAIN_ENGLISH',
+	'GENDER_NEUTRALITY',
+	'REGIONALISMS',
+	'CREATIVE_WRITING',
+	'TEXT_ANALYSIS',
+	'TON_ACADEMIC',
+	'WIKIPEDIA',
+]);
+
+/**
+ * Sort a match into one of three lint kinds, which set the highlight color:
+ * Spelling (red), Style (blue) or Grammar (amber) for everything else. Most
+ * German and French rules report the issue type `uncategorized` and a
+ * language-specific category, so unknown categories fall back to Grammar.
+ */
 function lintKindForMatch(match: LanguageToolMatch): LintKind {
-	if (match.rule.issueType === 'misspelling') {
+	const { issueType, category } = match.rule;
+	if (CONFUSION_CATEGORIES.has(category.id)) {
+		return 'Grammar';
+	}
+	if (
+		issueType === 'misspelling' ||
+		issueType === 'duplication' ||
+		SPELLING_CATEGORIES.has(category.id)
+	) {
 		return 'Spelling';
 	}
-
-	switch (match.rule.category.id) {
-		case 'TYPOS':
-			return 'Spelling';
-		case 'GRAMMAR':
-			return 'Grammar';
-		case 'PUNCTUATION':
-			return 'Punctuation';
-		case 'CASING':
-			return 'Capitalization';
-		case 'TYPOGRAPHY':
-			return 'Formatting';
-		case 'COMPOUNDING':
-			return 'BoundaryError';
-		case 'CONFUSED_WORDS':
-		case 'SEMANTICS':
-			return 'WordChoice';
-		case 'REDUNDANCY':
-			return 'Redundancy';
-		case 'REGIONALISMS':
-			return 'Regionalism';
-		case 'STYLE':
-		case 'COLLOQUIALISMS':
-		case 'PLAIN_ENGLISH':
-		case 'GENDER_NEUTRALITY':
-			return 'Style';
-		default:
-			return 'Miscellaneous';
+	if ((issueType && STYLE_ISSUE_TYPES.has(issueType)) || STYLE_CATEGORIES.has(category.id)) {
+		return 'Style';
 	}
+	return 'Grammar';
 }
 
 /**

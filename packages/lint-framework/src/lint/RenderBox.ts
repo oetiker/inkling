@@ -5,6 +5,9 @@ import patch from 'virtual-dom/patch';
 
 type ParentResolver = () => Node;
 
+/** The custom element that hosts each shadow root. */
+export const RENDER_BOX_TAG = 'inkling-render-box';
+
 /** Wraps `virtual-dom` to create a box that is unaffected by the style of the rest of the page. */
 export default class RenderBox {
 	/** The node we reattach into if a host is removed by editor-managed DOM updates. */
@@ -18,7 +21,7 @@ export default class RenderBox {
 
 	constructor(parent: Node | ParentResolver) {
 		this.parentResolver = typeof parent === 'function' ? parent : () => parent;
-		this.shadowHost = document.createElement('harper-render-box');
+		this.shadowHost = document.createElement(RENDER_BOX_TAG);
 		this.parentResolver().appendChild(this.shadowHost);
 	}
 

@@ -16,3 +16,6 @@ vendor/bundle/
 !.bundle/config
 fastlane/report.xml
 fastlane/README.md
+
+# Mockups from brainstorming sessions
+.superpowers/

@@ -2,13 +2,10 @@ import h from 'virtual-dom/h';
 import { closestBox, type IgnorableLintBox, isPointInBox } from './Box';
 import { nonEditableAncestor } from './domUtils';
 import { getCaretPosition } from './editorUtils';
-import type { UnpackedLint } from './unpackLint';
+import RenderBox from './RenderBox';
+import SuggestionBox, { focusSuggestion, type SuggestionBoxActions } from './SuggestionBox';
 
 type ActivationKey = 'off' | 'shift' | 'control';
-
-import hintsData from '../assets/hints.json';
-import RenderBox from './RenderBox';
-import SuggestionBox from './SuggestionBox';
 
 type ActivationHandler = () => void;
 
@@ -33,30 +30,18 @@ export default class PopupHandler {
 	private currentLintBoxes: IgnorableLintBox[];
 	private popupLint: number | undefined;
 	private selectedSuggestion = 0;
-	private currentHint: string | null | undefined;
-	private currentHintFor: number | undefined;
+	/** Whether the open card should hold the keyboard focus, rather than the editor. */
+	private popupFocus = false;
 	private renderBox: RenderBox;
 	private pointerDownCallback: (e: PointerEvent) => void;
 	private activationKeyListener: (() => void) | undefined;
-	private readonly actions: {
+	private readonly actions: SuggestionBoxActions & {
 		getActivationKey?: () => Promise<ActivationKey>;
-		openOptions?: () => Promise<void>;
-		addToUserDictionary?: (words: string[]) => Promise<void>;
-		reportError?: (lint: UnpackedLint, ruleId: string) => Promise<void>;
-		setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
 	};
 
-	constructor(actions: {
-		getActivationKey?: () => Promise<ActivationKey>;
-		openOptions?: () => Promise<void>;
-		addToUserDictionary?: (words: string[]) => Promise<void>;
-		reportError?: (lint: UnpackedLint, ruleId: string) => Promise<void>;
-		setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
-	}) {
+	constructor(actions: SuggestionBoxActions & { getActivationKey?: () => Promise<ActivationKey> }) {
 		this.actions = actions;
 		this.currentLintBoxes = [];
-		this.currentHint = undefined;
-		this.currentHintFor = undefined;
 		this.renderBox = new RenderBox(() => nonEditableAncestor(document.body));
 		this.renderBox.getShadowHost().popover = 'manual';
 		this.renderBox.getShadowHost().style.pointerEvents = 'none';
@@ -84,7 +69,7 @@ export default class PopupHandler {
 		}
 	}
 
-	/** Open and render the row nearest the editor caret immediately on activation. */
+	/** Open the card nearest the editor caret and move the keyboard into it. */
 	private openClosestToCaret() {
 		const host = this.renderBox.getShadowHost();
 		const popupFocused = document.activeElement === host;
@@ -98,17 +83,15 @@ export default class PopupHandler {
 
 		this.popupLint = closestIdx;
 		this.selectedSuggestion = 0;
+		this.popupFocus = true;
 		this.render();
 		if (popupFocused) this.focusSelectedSuggestion();
 	}
 
 	/** Focus the active replacement without replacing the renderer's saved editor selection. */
 	private focusSelectedSuggestion() {
-		const row = this.renderBox
-			.getShadowHost()
-			.shadowRoot?.querySelector<HTMLElement>('.harper-selected');
-		row?.focus({ preventScroll: true });
-		row?.scrollIntoView({ block: 'nearest' });
+		const root = this.renderBox.getShadowHost().shadowRoot;
+		if (root) focusSuggestion(root, this.selectedSuggestion);
 	}
 
 	private onPointerDown(e: PointerEvent) {
@@ -116,9 +99,11 @@ export default class PopupHandler {
 			const box = this.currentLintBoxes[i];
 
 			if (e.composedPath().includes(box.source) && isPointInBox([e.x, e.y], box)) {
+				// The click also places the caret, so the card must not take the focus.
 				if (this.popupLint != null) this.close();
 				this.popupLint = i;
 				this.selectedSuggestion = 0;
+				this.popupFocus = false;
 				this.render();
 				return;
 			}
@@ -130,7 +115,15 @@ export default class PopupHandler {
 	private close = () => {
 		this.popupLint = undefined;
 		this.selectedSuggestion = 0;
+		this.popupFocus = false;
 		this.render();
+	};
+
+	/** Typing in the editor closes the card; it does not block the key. */
+	private onEditorKeyDown = (event: KeyboardEvent) => {
+		if (['Shift', 'Control', 'Alt', 'Meta', 'Escape'].includes(event.key)) return;
+		if (event.composedPath().includes(this.renderBox.getShadowHost())) return;
+		this.close();
 	};
 
 	private onOutsidePointerDown = (event: PointerEvent) => {
@@ -145,8 +138,6 @@ export default class PopupHandler {
 		let tree = h('div', {}, []);
 		const host = this.renderBox.getShadowHost();
 
-		this.updateHint();
-
 		if (this.popupLint != null && this.popupLint < this.currentLintBoxes.length) {
 			const box = this.currentLintBoxes[this.popupLint];
 
@@ -158,8 +149,8 @@ export default class PopupHandler {
 					this.selectedSuggestion = index;
 					this.render();
 				},
+				focus: this.popupFocus,
 				actions: this.actions,
-				hint: this.currentHint ?? null,
 				close: this.close,
 			});
 		}
@@ -168,37 +159,18 @@ export default class PopupHandler {
 
 		if (this.popupLint != null && this.popupLint < this.currentLintBoxes.length) {
 			document.addEventListener('pointerdown', this.onOutsidePointerDown, true);
+			document.addEventListener('keydown', this.onEditorKeyDown, true);
 			host.style.setProperty('visibility', 'visible', 'important');
 			if (host.isConnected && !host.matches(':popover-open')) {
 				host.showPopover();
 			}
 		} else {
 			document.removeEventListener('pointerdown', this.onOutsidePointerDown, true);
+			document.removeEventListener('keydown', this.onEditorKeyDown, true);
 			host.style.setProperty('visibility', 'hidden', 'important');
 			if (host.isConnected && host.matches(':popover-open')) {
 				host.hidePopover();
 			}
-		}
-	}
-
-	/** Synchronize the hint with the currently focused lint.
-	 * - If no lint is open, clear the hint state.
-	 * - If a different lint opens, or the hint is uninitialized, decide once (~10%).
-	 */
-	private updateHint() {
-		if (this.popupLint == null) {
-			this.currentHint = undefined;
-			this.currentHintFor = undefined;
-			return;
-		}
-
-		if (this.currentHintFor !== this.popupLint || this.currentHint === undefined) {
-			const hints: string[] = Array.isArray(hintsData)
-				? ((hintsData as unknown[]).filter((v) => typeof v === 'string') as string[])
-				: [];
-			const show = Math.random() < 0.1 && hints.length > 0;
-			this.currentHint = show ? hints[Math.floor(Math.random() * hints.length)] : null;
-			this.currentHintFor = this.popupLint;
 		}
 	}
 
@@ -247,9 +219,6 @@ export default class PopupHandler {
 						),
 					)
 				: 0;
-		// Index changes due to other fields or wrapped rectangles do not start a new hint session.
-		if (this.popupLint != null) this.currentHintFor = this.popupLint;
-
 		this.currentLintBoxes = boxes;
 		this.currentLintBoxes.forEach((b) => {
 			b.source.addEventListener('pointerdown', this.pointerDownCallback as EventListener);

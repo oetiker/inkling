@@ -52,11 +52,72 @@ test('Highlights a mistake reported by the server and applies its suggestion', a
 	expect(box).not.toBeNull();
 	await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
 
-	await page
-		.locator('.harper-container')
-		.getByRole('menuitem', { name: 'Test', exact: true })
-		.click();
+	await page.locator('.inkling-popup').getByRole('menuitem', { name: 'Test', exact: true }).click();
 	await expect(textarea).toHaveValue('Das ist ein Test.');
+});
+
+/** Type a text with one mistake and return the textarea and the center of its highlight. */
+async function markMistake(
+	browserName: string,
+	context: BrowserContext,
+	page: import('@playwright/test').Page,
+) {
+	if (browserName === 'firefox') {
+		test.skip(process.env.LT_DEFAULT_SERVER_URL == null, FIREFOX_SKIP_REASON);
+	} else {
+		await configureServer(context, MOCK_SERVER_URL);
+	}
+	await page.goto(TEST_PAGE_URL);
+
+	const textarea = page.locator('textarea');
+	await textarea.fill('Das ist ein Tset.');
+	const highlight = page.locator('#harper-highlight').first();
+	await highlight.waitFor({ state: 'visible', timeout: 30000 });
+	const box = (await highlight.boundingBox())!;
+	return { textarea, highlight, x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test('Clicking into a mistake keeps the caret in the text', async ({
+	browserName,
+	context,
+	page,
+}) => {
+	const { textarea, x, y } = await markMistake(browserName, context, page);
+	await page.mouse.click(x, y);
+
+	const popup = page.locator('.inkling-popup');
+	await expect(popup.getByRole('menuitem', { name: 'Test', exact: true })).toBeVisible();
+	await expect(textarea).toBeFocused();
+
+	// Typing goes into the text and closes the popup.
+	await page.keyboard.type('x');
+	await expect(textarea).not.toHaveValue('Das ist ein Tset.');
+	await expect(textarea).toHaveValue(/^Das ist ein T.*x.*\.$/);
+	await expect(popup).toBeHidden();
+});
+
+test('Escape closes the popup and leaves the caret in the text', async ({
+	browserName,
+	context,
+	page,
+}) => {
+	const { textarea, x, y } = await markMistake(browserName, context, page);
+	await page.mouse.click(x, y);
+	const popup = page.locator('.inkling-popup');
+	await expect(popup).toBeVisible();
+
+	await page.keyboard.press('Escape');
+	await expect(popup).toBeHidden();
+	await expect(textarea).toBeFocused();
+	await expect(textarea).toHaveValue('Das ist ein Tset.');
+});
+
+test('The close button ignores the mistake', async ({ browserName, context, page }) => {
+	const { x, y } = await markMistake(browserName, context, page);
+	await page.mouse.click(x, y);
+
+	await page.locator('.inkling-popup').getByRole('button', { name: 'Ignore' }).click();
+	await expect(page.locator('#harper-highlight')).toHaveCount(0);
 });
 
 test('Shows no highlights when no server is set', async ({ browserName, page }) => {

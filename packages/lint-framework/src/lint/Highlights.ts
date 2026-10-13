@@ -24,7 +24,7 @@ import {
 	isGoogleDocsSource,
 	isGoogleDocsSourceSyncing,
 } from './googleDocsAdapter';
-import { type LintKind, lintKindColor } from './lintKindColor';
+import { type LintKind, lintKindFill } from './lintKindColor';
 import RenderBox from './RenderBox';
 import type SourceElement from './SourceElement';
 import type { UnpackedLint } from './unpackLint';
@@ -41,19 +41,15 @@ export default class Highlights {
 
 	/** Used for CSS highlight API */
 	private insertHighlightStyle(tag: string, lint: UnpackedLint) {
-		const color = lintKindColor(lint.lint_kind);
-		const textDecor = `underline ${color} solid 2px`;
-		const backgroundColor = `${color}22`;
-
 		const styleId = `harper-highlight-style-${lint.lint_kind}`;
 		if (document.getElementById(styleId)) return;
 
+		// ::highlight() accepts no border-radius, so the CSS highlight is a plain marker fill.
 		const style = document.createElement('style');
 		style.id = styleId;
 		style.textContent = `
       ::highlight(${tag}) {
-        text-decoration: ${textDecor};
-        background-color: ${backgroundColor};
+        background-color: ${lintKindFill(lint.lint_kind)};
       }
     `;
 		document.head.appendChild(style);
@@ -210,8 +206,8 @@ export default class Highlights {
 						width: `${box.width}px`,
 						height: `${box.height}px`,
 						pointerEvents: 'none',
-						borderBottom: `2px solid ${lintKindColor(box.lint.lint_kind)}`,
-						backgroundColor: `${lintKindColor(box.lint.lint_kind)}22`,
+						borderRadius: '3px',
+						backgroundColor: lintKindFill(box.lint.lint_kind),
 					},
 					id: 'harper-highlight',
 				},
