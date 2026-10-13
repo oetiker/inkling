@@ -11,6 +11,7 @@
 			"**/packages/**/*",
 			"**/harper-desktop/**/*",
 			"**/*.json",
+			"!**/.claude",
 			"!**/test-results",
 			"!**/packages/extension/tests/pages/**/*",
 			"!**/node_modules",
