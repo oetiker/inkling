@@ -119,8 +119,8 @@ export default class ProtocolClient {
 		await chrome.runtime.sendMessage({ kind: 'setTabPaused', tabId, paused });
 	}
 
-	public static async pageStarted(): Promise<void> {
-		await chrome.runtime.sendMessage({ kind: 'pageStarted' });
+	public static async pageStarted(startedAt: number): Promise<void> {
+		await chrome.runtime.sendMessage({ kind: 'pageStarted', startedAt });
 	}
 
 	public static async getActivationKey(): Promise<ActivationKey> {

@@ -34,8 +34,25 @@ chrome.runtime.onMessage.addListener((message: { kind?: string }) => {
 });
 
 // A new document in this tab ends a pause the user set for it.
+// A prerendered page counts from its activation, a page restored from the back/forward
+// cache from its restore; both reuse this script without running it again.
 if (window === window.top) {
-	void ProtocolClient.pageStarted();
+	if ((document as Document & { prerendering?: boolean }).prerendering) {
+		document.addEventListener(
+			'prerenderingchange',
+			() => void ProtocolClient.pageStarted(Date.now()),
+			{
+				once: true,
+			},
+		);
+	} else {
+		void ProtocolClient.pageStarted(performance.timeOrigin);
+	}
+	window.addEventListener('pageshow', (event) => {
+		if (event.persisted) {
+			void ProtocolClient.pageStarted(Date.now());
+		}
+	});
 }
 
 const syncGoogleDocsBridge = createGoogleDocsBridgeSync(fw);

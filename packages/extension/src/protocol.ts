@@ -268,7 +268,9 @@ export type SetTabPausedRequest = {
 	paused: boolean;
 };
 
-/** Sent once by the top frame's content script when a new document starts. */
+/** Sent by the top frame's content script when a new document starts or is shown again. */
 export type PageStartedRequest = {
 	kind: 'pageStarted';
+	/** When the document started, in ms since the epoch. A pause set earlier ends. */
+	startedAt: number;
 };

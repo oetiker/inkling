@@ -19,6 +19,7 @@ import {
 	type IgnoreLintRequest,
 	type LintRequest,
 	type LintResponse,
+	type PageStartedRequest,
 	type RefreshMessage,
 	type Request,
 	type Response,
@@ -39,7 +40,7 @@ import {
 } from '../protocol';
 import { domainLookupCandidates, domainWriteTarget } from './domainKeys';
 import { checkWithLanguageTool, fetchServerVersion } from './languageTool';
-import { clearTabPause, isTabPaused, setTabPaused } from './tabPause';
+import { clearTabPause, endTabPauseAt, isTabPaused, setTabPaused } from './tabPause';
 
 /** Wait this long after typing stops before checking, unless the user picks another delay. */
 const DEFAULT_DELAY_MS = 500;
@@ -174,7 +175,7 @@ function handleRequest(message: Request, sender?: chrome.runtime.MessageSender):
 		case 'setTabPaused':
 			return handleSetTabPaused(message);
 		case 'pageStarted':
-			return handlePageStarted(sender);
+			return handlePageStarted(message, sender);
 		case 'openOptions':
 			chrome.runtime.openOptionsPage();
 			return Promise.resolve(createUnitResponse());
@@ -193,9 +194,12 @@ async function handleSetTabPaused(req: SetTabPausedRequest): Promise<UnitRespons
 }
 
 /** A new document in a tab ends its pause; History-API navigation does not get here. */
-async function handlePageStarted(sender?: chrome.runtime.MessageSender): Promise<UnitResponse> {
+async function handlePageStarted(
+	req: PageStartedRequest,
+	sender?: chrome.runtime.MessageSender,
+): Promise<UnitResponse> {
 	if (sender?.tab?.id != null && sender.frameId === 0) {
-		await clearTabPause(sender.tab.id);
+		await endTabPauseAt(sender.tab.id, req.startedAt);
 	}
 	return createUnitResponse();
 }
