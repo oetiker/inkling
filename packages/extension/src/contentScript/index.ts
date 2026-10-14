@@ -46,7 +46,7 @@ if (window === window.top) {
 			},
 		);
 	} else {
-		void ProtocolClient.pageStarted(performance.timeOrigin);
+		void ProtocolClient.pageStarted(Date.now() - performance.now());
 	}
 	window.addEventListener('pageshow', (event) => {
 		if (event.persisted) {

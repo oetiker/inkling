@@ -1,8 +1,9 @@
 /**
  * Tabs where the user paused checking. One `storage.session` key per tab, so
  * concurrent updates cannot overwrite each other. The value is the time the
- * pause was set, so a late "page started" message cannot end a newer pause. `storage.session` survives a
- * service worker restart and is empty after a browser restart.
+ * pause was set, so a late "page started" message cannot end a newer pause.
+ * `storage.session` survives a service worker restart and is empty after a
+ * browser restart.
  */
 
 function pauseKey(tabId: number): string {

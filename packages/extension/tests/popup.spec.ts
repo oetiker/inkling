@@ -17,33 +17,6 @@ async function markedPage(context: BrowserContext, url: string): Promise<Page> {
 	return page;
 }
 
-// Protocol messages are sent from an extension page, not from the service worker:
-// chrome.runtime.sendMessage in the worker does not reach the worker's own listener.
-test('Site switch works on a www. host and takes effect at once', async ({ context }) => {
-	await storageSet(context, {
-		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
-		'domainStatus www.localhost': true,
-	});
-	const page = await markedPage(context, `http://www.localhost:18081/${PAGE}`);
-
-	const ext = await context.newPage();
-	await ext.goto(
-		`chrome-extension://${new URL((await getBackground(context)).url()).host}/options.html`,
-	);
-	await ext.evaluate(() =>
-		chrome.runtime.sendMessage({
-			kind: 'setDomainStatus',
-			domain: 'www.localhost',
-			enabled: false,
-			overrideValue: true,
-		}),
-	);
-	expect(await storageGet(context, 'domainStatus www.localhost')).toBe(false);
-
-	await page.bringToFront();
-	await expect(page.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
-});
-
 /** Sends a protocol message from an extension page (the worker cannot message itself). */
 async function sendFromExtension(context: BrowserContext, message: unknown): Promise<unknown> {
 	const background = await getBackground(context);
@@ -148,6 +121,25 @@ test('Popup turns a site off and on', async ({ context }) => {
 	await expect(popup.getByText('Off for this site')).toBeVisible();
 	await expect(popup.getByRole('button', { name: 'Pause in this tab' })).toHaveCount(0);
 	expect(await storageGet(context, 'domainStatus localhost')).toBe(false);
+	await a.bringToFront();
+	await expect(a.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
+});
+
+test('Popup site switch works on a www. host and takes effect at once', async ({ context }) => {
+	await storageSet(context, {
+		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
+		'domainStatus www.localhost': true,
+	});
+	const a = await markedPage(context, `http://www.localhost:18081/${PAGE}?tab=a`);
+	const popup = await openPopupFor(context, await tabIdOf(context, '?tab=a'));
+
+	await expect(popup.getByText('localhost', { exact: true })).toBeVisible();
+	const site = popup.getByRole('switch', { name: 'Check this site' });
+	await expect(site).toBeChecked();
+
+	await site.click();
+	await expect(popup.getByText('Off for this site')).toBeVisible();
+	expect(await storageGet(context, 'domainStatus www.localhost')).toBe(false);
 	await a.bringToFront();
 	await expect(a.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
 });

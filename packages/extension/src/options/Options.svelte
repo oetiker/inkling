@@ -219,7 +219,7 @@ async function exportEnabledDomainsJSON() {
         <div class="grid gap-2 sm:grid-cols-[1fr_10rem] sm:items-start">
           {@render row('delay', 'Delay', 'Wait this many milliseconds after typing stops before checking the text again.')}
           <div class="flex flex-col gap-1">
-            <Input id="delay" type="text" inputmode="numeric" value={delayText} oninput={(e) => onDelayInput(e.currentTarget.value)} aria-invalid={delayError} aria-describedby="delay-error" />
+            <Input id="delay" type="text" inputmode="numeric" value={delayText} oninput={(e) => onDelayInput(e.currentTarget.value)} aria-invalid={delayError} aria-describedby={delayError ? 'delay-error' : undefined} />
             {#if delayError}
               <p id="delay-error" class="text-destructive text-sm">Enter a whole number of milliseconds, 0 or more.</p>
             {/if}
@@ -238,7 +238,7 @@ async function exportEnabledDomainsJSON() {
         </div>
         <div class="flex items-center justify-between gap-4">
           {@render row('hotkey', 'Apply-suggestion hotkey', 'Applies the first suggestion to the last marked word.')}
-          <HotkeyRecorder {hotkey} onchange={onHotkeyChange} />
+          <HotkeyRecorder id="hotkey" {hotkey} onchange={onHotkeyChange} />
         </div>
         <div class="flex flex-col gap-2">
           {@render row('user-dictionary', 'User dictionary', 'One word per line. These words are never marked as spelling mistakes.')}

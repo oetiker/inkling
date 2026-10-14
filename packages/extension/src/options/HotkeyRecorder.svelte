@@ -4,7 +4,8 @@ import { Button } from '$lib/components/ui/button/index.js';
 import { Kbd } from '$lib/components/ui/kbd/index.js';
 import type { Hotkey, Modifier } from '../protocol';
 
-let { hotkey, onchange }: { hotkey: Hotkey; onchange: (hotkey: Hotkey) => void } = $props();
+let { hotkey, onchange, id }: { hotkey: Hotkey; onchange: (hotkey: Hotkey) => void; id?: string } =
+	$props();
 
 let recording = $state(false);
 
@@ -48,7 +49,7 @@ onDestroy(stop);
       <Kbd>{part}</Kbd>
     {/each}
   </span>
-  <Button variant="outline" size="sm" onclick={recording ? stop : start}>
+  <Button {id} variant="outline" size="sm" onclick={recording ? stop : start}>
     {recording ? 'Press keys…' : 'Change hotkey'}
   </Button>
 </div>

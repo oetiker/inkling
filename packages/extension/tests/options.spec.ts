@@ -68,16 +68,18 @@ test('Invalid delay is rejected', async ({ context }) => {
 
 test('Hotkey can be recorded and recording can be cancelled', async ({ context }) => {
 	const page = await openOptions(context);
-	await page.getByRole('button', { name: 'Change hotkey' }).click();
-	await expect(page.getByRole('button', { name: 'Press keys…' })).toBeVisible();
+	// The <Label> names the button, so find it by id and check its text.
+	const recorder = page.locator('#hotkey');
+	await recorder.click();
+	await expect(recorder).toHaveText('Press keys…');
 	await page.keyboard.press('Control+Shift+K');
 	await expect
 		.poll(() => storageGet(context, 'hotkey'))
 		.toEqual({ modifiers: ['Ctrl', 'Shift'], key: 'K' });
 
-	await page.getByRole('button', { name: 'Change hotkey' }).click();
+	await recorder.click();
 	await page.keyboard.press('Escape');
-	await expect(page.getByRole('button', { name: 'Change hotkey' })).toBeVisible();
+	await expect(recorder).toHaveText('Change hotkey');
 	await page.keyboard.press('Control+Alt+J');
 	expect(await storageGet(context, 'hotkey')).toEqual({ modifiers: ['Ctrl', 'Shift'], key: 'K' });
 });
