@@ -1,3 +1,5 @@
+- The popup has a new look with a "Check this site" switch and a "Pause in this tab" button: a pause stops checking only in the current tab and ends when you reload the tab, open another page in it or close it.
+- The popup says "Inkling cannot check this page" on browser pages and extension stores instead of showing an empty site name.
 - Turning a site off in the popup now also works on sites whose address starts with "www." (such as www.reddit.com), and the marks disappear within a second instead of after up to a minute.
 - The settings page has a new, cleaner look. The "Delay" field now refuses an empty or negative value with a message instead of silently saving 0, and pressing Escape while setting the apply-suggestion hotkey keeps the old one.
 - The settings page and the popup no longer load fonts from Google.

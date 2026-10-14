@@ -126,3 +126,88 @@ test('A pause covers frames inside the tab', async ({ context }) => {
 	await page.bringToFront();
 	await expect(frame.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
 });
+
+async function openPopupFor(context: BrowserContext, tabId: number): Promise<Page> {
+	const background = await getBackground(context);
+	const popup = await context.newPage();
+	await popup.goto(`chrome-extension://${new URL(background.url()).host}/popup.html?tab=${tabId}`);
+	return popup;
+}
+
+test('Popup turns a site off and on', async ({ context }) => {
+	await setupServer(context);
+	const a = await markedPage(context, `http://localhost:18081/${PAGE}?tab=a`);
+	const popup = await openPopupFor(context, await tabIdOf(context, '?tab=a'));
+
+	await expect(popup.getByText('localhost', { exact: true })).toBeVisible();
+	const site = popup.getByRole('switch', { name: 'Check this site' });
+	await expect(site).toBeChecked();
+	await expect(popup.getByText('Checking is on')).toBeVisible();
+
+	await site.click();
+	await expect(popup.getByText('Off for this site')).toBeVisible();
+	await expect(popup.getByRole('button', { name: 'Pause in this tab' })).toHaveCount(0);
+	expect(await storageGet(context, 'domainStatus localhost')).toBe(false);
+	await a.bringToFront();
+	await expect(a.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
+});
+
+test('Popup pauses and resumes the tab; turning the site off ends the pause', async ({
+	context,
+}) => {
+	await setupServer(context);
+	const a = await markedPage(context, `http://localhost:18081/${PAGE}?tab=a`);
+	const idA = await tabIdOf(context, '?tab=a');
+	const popup = await openPopupFor(context, idA);
+
+	await popup.getByRole('button', { name: 'Pause in this tab' }).click();
+	await expect(popup.getByText('Paused in this tab')).toBeVisible();
+	await a.bringToFront();
+	await expect(a.locator('#inkling-highlight')).toHaveCount(0, { timeout: 5000 });
+
+	await popup.bringToFront();
+	await popup.getByRole('button', { name: 'Resume in this tab' }).click();
+	await expect(popup.getByText('Checking is on')).toBeVisible();
+
+	await popup.getByRole('button', { name: 'Pause in this tab' }).click();
+	const site = popup.getByRole('switch', { name: 'Check this site' });
+	await site.click();
+	await site.click();
+	expect(await sendFromExtension(context, { kind: 'getTabPaused', tabId: idA })).toMatchObject({
+		paused: false,
+	});
+	await expect(popup.getByText('Checking is on')).toBeVisible();
+});
+
+test('Popup shows a hint when no server is set', async ({ context }) => {
+	const a = await context.newPage();
+	await a.goto(`http://localhost:18081/${PAGE}?tab=a`);
+	const popup = await openPopupFor(context, await tabIdOf(context, '?tab=a'));
+	await expect(popup.getByRole('alert')).toContainText('No LanguageTool server is set');
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
+});
+
+test('Popup cannot act on about:blank', async ({ context }) => {
+	await setupServer(context);
+	const blank = await context.newPage();
+	await blank.goto('about:blank');
+	const background = await getBackground(context);
+	const id = await background.evaluate(async () => {
+		const tabs = await chrome.tabs.query({});
+		return tabs.find((t) => t.url === 'about:blank')!.id!;
+	});
+	const popup = await openPopupFor(context, id);
+	await expect(popup.getByText('Inkling cannot check this page')).toBeVisible();
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toBeDisabled();
+});
+
+test('Popup shows the logo and opens the settings', async ({ context }) => {
+	await setupServer(context);
+	const a = await context.newPage();
+	await a.goto(`http://localhost:18081/${PAGE}?tab=a`);
+	const popup = await openPopupFor(context, await tabIdOf(context, '?tab=a'));
+	await expect(popup.getByRole('img', { name: 'Inkling logo' })).toBeVisible();
+	const optionsPage = context.waitForEvent('page');
+	await popup.getByRole('button', { name: 'Settings' }).click();
+	expect((await optionsPage).url()).toContain('/options.html');
+});

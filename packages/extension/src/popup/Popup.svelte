@@ -1,28 +1,48 @@
 <script lang="ts">
-import { Link } from 'components';
-import logo from '/logo.png';
-import Main from './Main.svelte';
+import Settings2 from '@lucide/svelte/icons/settings-2';
+import * as Alert from '$lib/components/ui/alert/index.js';
+import { Button } from '$lib/components/ui/button/index.js';
+import { Separator } from '$lib/components/ui/separator/index.js';
+import PageHeader from '../components/PageHeader.svelte';
+import ProtocolClient from '../ProtocolClient';
+import { currentTab, type PopupTab } from './currentTab';
+import SiteControls from './SiteControls.svelte';
 
-const name = chrome.runtime.getManifest().name;
-const version = `v${chrome.runtime.getManifest().version}`;
+let tab: PopupTab | undefined = $state();
+let tabLoaded = $state(false);
+let serverConfigured: boolean | null = $state(null);
+
+currentTab().then((t) => {
+	tab = t;
+	tabLoaded = true;
+});
+
+ProtocolClient.getServerSettings().then((s) => {
+	serverConfigured = s.serverUrl.length > 0;
+});
 
 function openSettings() {
-	chrome.runtime?.openOptionsPage?.();
+	ProtocolClient.openOptions();
 }
 </script>
 
-<div class="w-[340px] border border-gray-200 font-sans flex flex-col rounded-lg shadow-sm select-none dark:border-slate-800 dark:text-slate-100">
-  <header class="flex flex-row justify-between items-center gap-2 px-3 py-2 rounded-t-lg">
-    <div class="flex flex-row justify-start items-center gap-1">
-      <img src={logo} alt="" class="h-6 w-auto rounded-lg mx-2" />
-      <span class="font-semibold text-sm">{name}</span>
-    </div>
-    <span class="text-sm font-mono">{version}</span>
-  </header>
+<main class="bg-background text-foreground flex w-80 flex-col gap-4 p-4">
+  <PageHeader />
+  <Separator />
 
-  <Main />
+  {#if serverConfigured === false}
+    <Alert.Root>
+      <Alert.Title>No LanguageTool server is set</Alert.Title>
+      <Alert.Description>
+        <Button variant="link" class="h-auto p-0" onclick={openSettings}>Open the settings</Button> to add one.
+      </Alert.Description>
+    </Alert.Root>
+  {:else if serverConfigured === true && tabLoaded}
+    <SiteControls {tab} />
+  {/if}
 
-  <footer class="flex items-center justify-center gap-6 px-3 py-2 text-sm border-t border-gray-100 rounded-b-lg bg-white/60 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100">
-    <Link on:click={openSettings}>Settings</Link>
-  </footer>
-</div>
+  <Separator />
+  <div class="flex justify-end">
+    <Button variant="ghost" size="sm" onclick={openSettings}><Settings2 />Settings</Button>
+  </div>
+</main>
