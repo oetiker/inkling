@@ -1,7 +1,7 @@
 # Options page and popup with shadcn-svelte
 
 Date: 2026-10-14
-Status: approved in conversation, revised after pushback review, awaiting spec review
+Status: approved in conversation, revised after two pushback reviews, awaiting spec review
 
 ## Goal
 
@@ -108,11 +108,16 @@ state and cannot turn the site off.
 - The popup sends the full hostname for `getDomainStatus` and
   `setDomainStatus`.
 - The background owns all `www.` matching in one pure function
-  (hostname → storage keys to read, key to write), covered by a unit test in
-  `unit/`. Writing a status for `www.x` or `x` updates the key that the lookup
-  will find first, so a read after a write always returns the written value.
+  (hostname → storage keys to read, key to write) in its own module
+  `src/background/domainKeys.ts`, so `node --test` can load it without the
+  `chrome` API (`background/index.ts` registers listeners on import).
+  Write rule: write to the key that the lookup finds first for that hostname;
+  when no key is stored, write the exact hostname. A read after a write always
+  returns the written value. Covered by a unit test in `unit/`.
 - The WordPress/Substack auto-enable in `src/contentScript/index.ts` goes
   through the same path.
+- Bare keys such as `domainStatus reddit.com` that the old popup wrote are not
+  migrated: they have no effect and the extension is at 0.1.0.
 
 ## Per-tab pause
 
@@ -120,8 +125,10 @@ state and cannot turn the site off.
   (`paused:<tabId>`), set and removed individually, so concurrent updates
   cannot overwrite each other. `storage.session` survives a service worker
   restart and is empty after a browser restart.
-- New protocol messages: `getTabPaused { tabId }` and
-  `setTabPaused { tabId, paused }`, with matching `ProtocolClient` methods.
+- New protocol messages: `getTabPaused { tabId }`,
+  `setTabPaused { tabId, paused }` and `pageStarted` (content script →
+  background), with matching `ProtocolClient` methods; `refresh` (background →
+  content script, see "Refresh of open pages").
   The popup gets the tab ID from `chrome.tabs.query({ active: true,
   currentWindow: true })`.
 - `shouldLintForRequest` returns false when `sender.tab.id` is paused, before
@@ -129,13 +136,16 @@ state and cannot turn the site off.
   are paused too.
 - The pause ends when:
   - the tab closes (`tabs.onRemoved`);
-  - the tab's main frame commits a new document — reload or navigation
-    (`webNavigation.onCommitted` with `frameId === 0`). History-API
-    navigation of single-page apps (`onHistoryStateUpdated`) does not end it;
-  - the user turns the site off in the popup.
-- New permission: `webNavigation` (Chrome and Firefox). Check during
-  implementation whether it adds an install warning beyond the existing
-  `tabs` permission and report it.
+  - a new document loads in the tab (reload or navigation): the content script
+    of the top frame (`window === window.top`) sends `pageStarted` once when it
+    starts, and the background removes `paused:<sender.tab.id>`. History-API
+    navigation of single-page apps does not restart the content script, so it
+    does not end the pause. No new permission is needed (`webNavigation` was
+    rejected: in Firefox it adds an install warning and blocks updates until
+    users approve it);
+  - the user turns the site off in the popup: the popup then sends
+    `setTabPaused { tabId, paused: false }` for its own tab (the background
+    cannot tell which tab a popup belongs to).
 
 ## Refresh of open pages
 
@@ -143,13 +153,17 @@ state and cannot turn the site off.
 (`src/ProtocolClient.ts`), so a changed setting would show only after up to a
 minute. This affects the pause and the site switch.
 
-- After `setTabPaused` or `setDomainStatus`, the background sends a
-  `refresh` message to every frame of the affected tab(s)
-  (`chrome.tabs.sendMessage`; for a site change, every tab whose URL host
-  matches). Errors from tabs without a content script are ignored.
-- The content script handles `refresh` by clearing the `ProtocolClient` cache
-  and calling `fw.update()`. Marks disappear on pause/off and come back on
-  resume/on within one update cycle.
+- The background sends a `refresh` message only when a stored value really
+  changed: after `setTabPaused` to that tab, after `setDomainStatus` to all
+  tabs (iframes inherit the parent page's status, so matching by host would
+  miss them). The WordPress/Substack auto-enable calls `setDomainStatus` on
+  every page load and usually changes nothing, so it usually sends nothing.
+  `chrome.tabs.sendMessage` reaches all frames of a tab; errors from tabs
+  without a content script are ignored.
+- The content script handles `refresh` by clearing the `ProtocolClient` cache.
+  LintFramework already re-checks every second, so marks disappear on
+  pause/off and come back on resume/on within about one second. No extra
+  `fw.update()` call.
 
 ## Removal of `packages/components`
 
@@ -171,17 +185,19 @@ and accessible name, not CSS classes.
 or reach its background script, so the options page, the popup and the pause
 get no Firefox tests. `make test-firefox` keeps covering the in-page marks.
 
-**Test build permission:** the Chromium test build lists the mock server
-origin `http://127.0.0.1:18082/*` in `host_permissions` (enabled by an
-environment variable, the same way `LT_DEFAULT_SERVER_URL` works). An already
-granted origin makes `chrome.permissions.request` resolve `true` without a
-browser dialog. Release builds are unchanged.
+**Test build permission:** the Chromium test build lists
+`http://127.0.0.1/*` in `host_permissions`. This is the pattern the options
+page requests: `originPattern()` drops the port. It is enabled by a build
+environment variable that the `test-chromium` Makefile target sets (the same
+way `LT_DEFAULT_SERVER_URL` works). An already granted origin makes
+`chrome.permissions.request` resolve `true` without a browser dialog. Release
+builds are unchanged.
 
 - **Unit (`unit/`):** the `www.` matching function (read keys and write key
-  for `x`, `www.x`, `sub.x`).
+  for `x`, `www.x`, `sub.x`, with and without stored keys).
 - **Options:**
-  - Server URL pointing at the mock LanguageTool server plus "Save and Test"
-    shows the success Alert.
+  - Server URL `http://127.0.0.1:18082` (always the mock server, independent
+    of `LT_TEST_SERVER`) plus "Save and Test" shows the success Alert.
   - An invalid URL (`ftp://x`) shows the destructive Alert and saves nothing.
   - Change delay, "Enable on new sites" and the user dictionary, reload the
     page, values are still there.
@@ -193,15 +209,21 @@ browser dialog. Release builds are unchanged.
   is not web-accessible, so only the extension itself can open it with a
   parameter):
   - Turning the switch off changes the stored domain status.
-  - On a `www.` test host the switch shows the correct state and turning it
-    off stops checking.
+  - On the `www.` test host `http://www.localhost:18081/` the switch shows
+    the correct state and turning it off stops checking. (Chrome resolves
+    `*.localhost` to loopback; fallback: `--host-resolver-rules`.)
   - With an empty server URL the "No LanguageTool server is set" Alert shows.
 - **Pause:**
-  - Two tabs on the same test page with marks. Pause tab A: tab A loses its
-    marks within a few seconds, tab B keeps them.
-  - Resume tab A: marks come back within a few seconds.
+  - Two tabs on the same test page with marks, loaded with different query
+    strings so their tab IDs can be told apart. Marks are drawn in
+    `requestAnimationFrame`, which does not run in hidden tabs, so each
+    assertion first brings the tab under test to the front.
+  - Pause tab A: tab A loses its marks within about a second, tab B keeps
+    them.
+  - Resume tab A: marks come back within about a second.
   - Pause tab A, then `history.pushState` in tab A: still paused.
   - Pause tab A, reload it: marks come back.
+  - Pause tab A, turn the site off and on in the popup: tab A is not paused.
 
 Gates before every commit: `make lint`, `make check`, `make test-unit`,
 `make test-chromium`, `make test-firefox`. Screenshots of both pages in light
