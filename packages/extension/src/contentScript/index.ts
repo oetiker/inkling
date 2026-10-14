@@ -25,6 +25,14 @@ const fw = new LintFramework(
 	},
 );
 
+// The background asks for this after a site, default or pause setting changed.
+// LintFramework re-checks every second; with the cache gone it asks the background again.
+chrome.runtime.onMessage.addListener((message: { kind?: string }) => {
+	if (message?.kind === 'refresh') {
+		ProtocolClient.clearCache();
+	}
+});
+
 const syncGoogleDocsBridge = createGoogleDocsBridgeSync(fw);
 
 const keepAliveCallback = () => {

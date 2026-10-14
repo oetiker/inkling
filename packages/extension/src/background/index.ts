@@ -17,6 +17,7 @@ import {
 	type IgnoreLintRequest,
 	type LintRequest,
 	type LintResponse,
+	type RefreshMessage,
 	type Request,
 	type Response,
 	type ServerSettings,
@@ -33,6 +34,7 @@ import {
 	type TestServerResponse,
 	type UnitResponse,
 } from '../protocol';
+import { domainLookupCandidates, domainWriteTarget } from './domainKeys';
 import { checkWithLanguageTool, fetchServerVersion } from './languageTool';
 
 /** Wait this long after typing stops before checking, unless the user picks another delay. */
@@ -343,14 +345,17 @@ async function handleGetDomainStatus(
 }
 
 async function handleSetDomainStatus(req: SetDomainStatusRequest): Promise<UnitResponse> {
-	await setDomainEnable(req.domain, req.enabled, req.overrideValue);
-
+	if (await setDomainEnable(req.domain, req.enabled, req.overrideValue)) {
+		await refreshTabs();
+	}
 	return createUnitResponse();
 }
 
 async function handleSetDefaultStatus(req: SetDefaultStatusRequest): Promise<UnitResponse> {
-	await setDefaultEnable(req.enabled);
-
+	if ((await enabledByDefault()) !== req.enabled) {
+		await setDefaultEnable(req.enabled);
+		await refreshTabs();
+	}
 	return createUnitResponse();
 }
 
@@ -445,19 +450,14 @@ function formatDomainKey(domain: string): string {
 	return `domainStatus ${domain}`;
 }
 
-function getDomainLookupCandidates(domain: string): string[] {
-	const withoutWww = domain.replace(/^www\./, '');
-	return withoutWww === domain ? [domain] : [domain, withoutWww];
-}
-
 /**
  * Looks up a domain-specific enable/disable setting in local storage.
- * The lookup is normalized through `getDomainLookupCandidates` so we can try
+ * The lookup is normalized through `domainLookupCandidates` so we can try
  * both the exact hostname and a `www.`-stripped variant when sites are stored
  * under either form. Returns `undefined` when no stored override exists.
  */
 async function getStoredDomainStatus(domain: string): Promise<boolean | undefined> {
-	const candidates = getDomainLookupCandidates(domain);
+	const candidates = domainLookupCandidates(domain);
 	const response = await chrome.storage.local.get(candidates.map(formatDomainKey));
 
 	for (const candidate of candidates) {
@@ -477,29 +477,49 @@ async function enabledForDomain(domain: string): Promise<boolean> {
 		return stored;
 	}
 
-	if (
-		getDomainLookupCandidates(domain).some((candidate) => defaultEnabledDomainSet.has(candidate))
-	) {
+	if (domainLookupCandidates(domain).some((candidate) => defaultEnabledDomainSet.has(candidate))) {
 		return true;
 	}
 
 	return await enabledByDefault();
 }
 
-/** Set whether checking is enabled for a given domain.
+/** Set whether checking is enabled for a given domain. Returns whether storage changed.
  *
  * @param overrideValue dictates whether this should override a previous setting.
  * */
-async function setDomainEnable(domain: string, status: boolean, overrideValue = true) {
-	let shouldSet = !(await isDomainSet(domain));
-
-	if (overrideValue) {
-		shouldSet = true;
+async function setDomainEnable(
+	domain: string,
+	status: boolean,
+	overrideValue = true,
+): Promise<boolean> {
+	const candidates = domainLookupCandidates(domain);
+	const stored = await chrome.storage.local.get(candidates.map(formatDomainKey));
+	const storedHosts = new Set(
+		candidates.filter((c) => typeof stored[formatDomainKey(c)] === 'boolean'),
+	);
+	if (!overrideValue && storedHosts.size > 0) {
+		return false;
 	}
 
-	if (shouldSet) {
-		await chrome.storage.local.set({ [formatDomainKey(domain)]: status });
+	const key = formatDomainKey(domainWriteTarget(domain, storedHosts));
+	if (stored[key] === status) {
+		return false;
 	}
+	await chrome.storage.local.set({ [key]: status });
+	return true;
+}
+
+/**
+ * Tell content scripts to drop cached results, so a changed setting shows within
+ * about a second. Tabs without a content script reject; that is expected.
+ */
+async function refreshTabs(tabIds?: number[]): Promise<void> {
+	const ids =
+		tabIds ??
+		(await chrome.tabs.query({})).map((t) => t.id).filter((id): id is number => id != null);
+	const message: RefreshMessage = { kind: 'refresh' };
+	await Promise.all(ids.map((id) => chrome.tabs.sendMessage(id, message).catch(() => {})));
 }
 
 /** Set whether checking is enabled by default. */

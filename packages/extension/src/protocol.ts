@@ -235,6 +235,11 @@ export type OpenOptionsRequest = {
 	kind: 'openOptions';
 };
 
+/** Sent by the background to content scripts when a setting changed. */
+export type RefreshMessage = {
+	kind: 'refresh';
+};
+
 export type UnitResponse = {
 	kind: 'unit';
 };

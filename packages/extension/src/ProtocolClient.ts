@@ -34,6 +34,11 @@ export default class ProtocolClient {
 		return p;
 	}
 
+	/** Forget cached results, so the next check asks the background again. */
+	public static clearCache(): void {
+		this.lintCache.clear();
+	}
+
 	public static async getServerSettings(): Promise<ServerSettings> {
 		return (await chrome.runtime.sendMessage({ kind: 'getServerSettings' })).settings;
 	}

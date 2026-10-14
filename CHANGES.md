@@ -1,3 +1,4 @@
+- Turning a site off in the popup now also works on sites whose address starts with "www." (such as www.reddit.com), and the marks disappear within a second instead of after up to a minute.
 - The settings page has a new, cleaner look. The "Delay" field now refuses an empty or negative value with a message instead of silently saving 0, and pressing Escape while setting the apply-suggestion hotkey keeps the old one.
 - The settings page and the popup no longer load fonts from Google.
 - The Inkling icon is now a blue and yellow chisel-tip highlighter in place of the reading glasses, in the toolbar, the extensions list, the popup and the settings page. The toolbar gets real 16 and 32 pixel versions, so the icon stays sharp and readable on dark toolbars.
