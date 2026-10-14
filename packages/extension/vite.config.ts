@@ -2,7 +2,6 @@ import { crx } from '@crxjs/vite-plugin';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
-import sveltePreprocess from 'svelte-preprocess';
 import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import manifest from './src/manifest';
 
@@ -40,7 +39,6 @@ export default defineConfig(({ mode }) => {
 				compilerOptions: {
 					dev: !production,
 				},
-				preprocess: sveltePreprocess(),
 			}),
 		],
 		resolve: {

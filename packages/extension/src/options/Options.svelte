@@ -1,101 +1,63 @@
 <script lang="ts">
-import { Button, Card, Input, Select, Textarea } from 'components';
-import logo from '/logo.png';
+import * as Alert from '$lib/components/ui/alert/index.js';
+import { Button } from '$lib/components/ui/button/index.js';
+import * as Card from '$lib/components/ui/card/index.js';
+import { Input } from '$lib/components/ui/input/index.js';
+import { Label } from '$lib/components/ui/label/index.js';
+import * as Select from '$lib/components/ui/select/index.js';
+import { Switch } from '$lib/components/ui/switch/index.js';
+import { Textarea } from '$lib/components/ui/textarea/index.js';
+import PageHeader from '../components/PageHeader.svelte';
 import ProtocolClient from '../ProtocolClient';
-import type { Hotkey, Modifier } from '../protocol';
-import { ActivationKey } from '../protocol';
+import { ActivationKey, type Hotkey } from '../protocol';
+import HotkeyRecorder from './HotkeyRecorder.svelte';
+
+const activationKeyLabels: Record<ActivationKey, string> = {
+	[ActivationKey.Shift]: 'Double Shift',
+	[ActivationKey.Control]: 'Double Control',
+	[ActivationKey.Off]: 'Off',
+};
 
 let serverUrl = $state('');
 let preferredVariants = $state('');
 let serverStatus: { ok: boolean; message: string } | null = $state(null);
 let serverBusy = $state(false);
-let disabledRules = $state('');
-let disabledRulesLoaded = $state(false);
-let delay = $state(0);
-let delayLoaded = $state(false);
+
+let loaded = $state(false);
 let defaultEnabled = $state(false);
-let defaultEnabledLoaded = $state(false);
+let delayText = $state('');
+let delayError = $state(false);
 let activationKey: ActivationKey = $state(ActivationKey.Off);
-let activationKeyLoaded = $state(false);
-let userDict = $state('');
-let userDictLoaded = $state(false);
-let ignoredCleared = $state(false);
-let modifyHotkeyButton: Button;
 let hotkey: Hotkey = $state({ modifiers: ['Ctrl'], key: 'e' });
+let userDict = $state('');
+let disabledRules = $state('');
+let ignoredCleared = $state(false);
 
-$effect(() => {
-	if (delayLoaded) {
-		ProtocolClient.setDelay(delay);
-	}
-});
-
-$effect(() => {
-	if (defaultEnabledLoaded) {
-		ProtocolClient.setDefaultEnabled(defaultEnabled);
-	}
-});
-
-$effect(() => {
-	if (activationKeyLoaded) {
-		ProtocolClient.setActivationKey(activationKey);
-	}
-});
-
-$effect(() => {
-	if (userDictLoaded) {
-		ProtocolClient.setUserDictionary(stringToList(userDict));
-	}
-});
-
-$effect(() => {
-	if (disabledRulesLoaded) {
-		ProtocolClient.setDisabledRules(stringToList(disabledRules));
-	}
-});
-
-ProtocolClient.getServerSettings().then((s) => {
-	serverUrl = s.serverUrl;
-	preferredVariants = s.preferredVariants;
-});
-
-ProtocolClient.getDisabledRules().then((rules) => {
+Promise.all([
+	ProtocolClient.getServerSettings(),
+	ProtocolClient.getDefaultEnabled(),
+	ProtocolClient.getDelay(),
+	ProtocolClient.getActivationKey(),
+	ProtocolClient.getHotkey(),
+	ProtocolClient.getUserDictionary(),
+	ProtocolClient.getDisabledRules(),
+]).then(([server, enabled, delay, key, hk, dict, rules]) => {
+	serverUrl = server.serverUrl;
+	preferredVariants = server.preferredVariants;
+	defaultEnabled = enabled;
+	delayText = String(delay);
+	activationKey = key;
+	hotkey = { modifiers: [...hk.modifiers], key: hk.key };
+	userDict = listToString(dict.toSorted());
 	disabledRules = listToString(rules);
-	disabledRulesLoaded = true;
-});
-
-ProtocolClient.getDelay().then((value) => {
-	delay = value;
-	delayLoaded = true;
-});
-
-ProtocolClient.getDefaultEnabled().then((d) => {
-	defaultEnabled = d;
-	defaultEnabledLoaded = true;
-});
-
-ProtocolClient.getActivationKey().then((d) => {
-	activationKey = d;
-	activationKeyLoaded = true;
-});
-
-ProtocolClient.getHotkey().then((d) => {
-	hotkey = {
-		modifiers: [...d.modifiers],
-		key: d.key,
-	};
-	buttonText = `Hotkey: ${d.modifiers.join('+')}+${d.key}`;
-});
-
-ProtocolClient.getUserDictionary().then((d) => {
-	userDict = listToString(d.toSorted());
-	userDictLoaded = true;
+	loaded = true;
 });
 
 /** Converts the content of a text area to a list with one entry per line. */
 function stringToList(s: string): string[] {
 	return s
 		.split('\n')
-		.map((s) => s.trim())
+		.map((v) => v.trim())
 		.filter((v) => v.length > 0);
 }
 
@@ -150,6 +112,43 @@ async function saveServer() {
 	}
 }
 
+function onDelayInput(raw: string) {
+	delayText = raw;
+	const value = raw.trim();
+	const ok = /^\d+$/.test(value);
+	delayError = !ok;
+	if (ok) {
+		ProtocolClient.setDelay(Number(value));
+	}
+}
+
+function onDefaultEnabledChange(checked: boolean) {
+	defaultEnabled = checked;
+	ProtocolClient.setDefaultEnabled(checked);
+}
+
+function onActivationKeyChange(value: string) {
+	activationKey = value as ActivationKey;
+	ProtocolClient.setActivationKey(activationKey);
+}
+
+function onHotkeyChange(next: Hotkey) {
+	hotkey = next;
+	ProtocolClient.setHotkey(next);
+}
+
+$effect(() => {
+	if (loaded) {
+		ProtocolClient.setUserDictionary(stringToList(userDict));
+	}
+});
+
+$effect(() => {
+	if (loaded) {
+		ProtocolClient.setDisabledRules(stringToList(disabledRules));
+	}
+});
+
 async function clearIgnored() {
 	await ProtocolClient.clearIgnoredLints();
 	ignoredCleared = true;
@@ -158,9 +157,9 @@ async function clearIgnored() {
 async function exportEnabledDomainsJSON() {
 	try {
 		const enabledDomains = await ProtocolClient.getEnabledDomains();
-		const json = JSON.stringify(enabledDomains, null, 2);
-
-		const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+		const blob = new Blob([JSON.stringify(enabledDomains, null, 2)], {
+			type: 'application/json;charset=utf-8',
+		});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -173,254 +172,99 @@ async function exportEnabledDomainsJSON() {
 		console.error('Failed to export enabled domains JSON:', e);
 	}
 }
-
-let buttonText = $state('Set Hotkey');
-let isBlue = $state(false); // modify color of hotkey button once it is pressed
-function startHotkeyCapture(_modifyHotkeyButton: Button) {
-	buttonText = 'Press desired hotkey combination now.';
-
-	const handleKeydown = (event: KeyboardEvent) => {
-		event.preventDefault();
-
-		const modifiers: Modifier[] = [];
-		if (event.ctrlKey) modifiers.push('Ctrl');
-		if (event.shiftKey) modifiers.push('Shift');
-		if (event.altKey) modifiers.push('Alt');
-
-		let key = event.key;
-
-		if (key !== 'Control' && key !== 'Shift' && key !== 'Alt') {
-			if (modifiers.length === 0) {
-				return;
-			}
-			buttonText = `Hotkey: ${modifiers.join('+')}+${key}`;
-			// Create a plain object to avoid proxy cloning issues
-			const newHotkey = {
-				modifiers: [...modifiers],
-				key: key,
-			};
-
-			hotkey = newHotkey;
-
-			// Call ProtocolClient directly with the plain object to avoid proxy issues
-			ProtocolClient.setHotkey(newHotkey);
-
-			// Remove listener
-			window.removeEventListener('keydown', handleKeydown);
-
-			// change button color
-			isBlue = !isBlue;
-		}
-	};
-
-	// Add temporary key listener
-	window.addEventListener('keydown', handleKeydown);
-}
 </script>
 
-<!-- centered wrapper with side gutters -->
-<div class="min-h-screen px-4 py-10">
-  <div class="mx-auto max-w-screen-lg space-y-4">
-    <Card class="flex items-center gap-3">
-      <div class="flex h-9 w-9 items-center justify-center rounded-xl">
-        <img src={logo} alt="" class="h-5 w-auto" />
-      </div>
-      <div class="flex flex-col">
-        <h1 class="text-base tracking-wide font-serif">{chrome.runtime.getManifest().name}</h1>
-        <p class="text-xs">Settings</p>
-      </div>
-    </Card>
+{#snippet row(id: string, label: string, help: string)}
+  <div class="flex flex-col gap-1">
+    <Label for={id}>{label}</Label>
+    <p class="text-muted-foreground text-sm">{help}</p>
+  </div>
+{/snippet}
 
-    <!-- ── SERVER ────────────────────────────── -->
-    <Card class="space-y-6">
-      <h2 class="pb-1 text-xs uppercase tracking-wider">LanguageTool Server</h2>
+<main class="bg-background text-foreground min-h-screen px-4 py-10">
+  <div class="mx-auto flex max-w-2xl flex-col gap-6">
+    <PageHeader subtitle="Settings" />
 
-      <div class="space-y-5">
+    <Card.Root>
+      <Card.Header><Card.Title>Server</Card.Title></Card.Header>
+      <Card.Content class="flex flex-col gap-6">
+        <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
+          {@render row('server-url', 'Server URL', 'For example https://lt.example.com or http://localhost:8081. Leave empty to turn checking off.')}
+          <Input id="server-url" placeholder="https://lt.example.com" bind:value={serverUrl} />
+        </div>
+        <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
+          {@render row('preferred-variants', 'Preferred variants', 'Comma-separated, for example de-CH,en-GB. The server uses them when it detects the language of a text.')}
+          <Input id="preferred-variants" placeholder="de-CH,en-GB" bind:value={preferredVariants} />
+        </div>
+        {#if serverStatus}
+          <Alert.Root variant={serverStatus.ok ? 'default' : 'destructive'}>
+            <Alert.Description>
+              {serverStatus.ok ? `Connected: ${serverStatus.message}` : serverStatus.message}
+            </Alert.Description>
+          </Alert.Root>
+        {/if}
+        <div class="flex justify-end">
+          <Button disabled={serverBusy} onclick={saveServer}>Save and Test</Button>
+        </div>
+      </Card.Content>
+    </Card.Root>
+
+    <Card.Root>
+      <Card.Header><Card.Title>General</Card.Title></Card.Header>
+      <Card.Content class="flex flex-col gap-6">
         <div class="flex items-center justify-between gap-4">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Server URL</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              For example <code>https://lt.example.com</code> or
-              <code>http://localhost:8081</code>. Leave empty to turn checking off.
-            </p>
-          </div>
-          <Input
-            size="sm"
-            class="w-72"
-            placeholder="https://lt.example.com"
-            data-testid="server-url"
-            bind:value={serverUrl}
-          />
+          {@render row('default-enabled', 'Enable on new sites', 'Can make some apps behave abnormally.')}
+          <Switch id="default-enabled" checked={defaultEnabled} onCheckedChange={onDefaultEnabledChange} />
         </div>
-      </div>
-
-      <div class="space-y-5">
+        <div class="grid gap-2 sm:grid-cols-[1fr_10rem] sm:items-start">
+          {@render row('delay', 'Delay', 'Wait this many milliseconds after typing stops before checking the text again.')}
+          <div class="flex flex-col gap-1">
+            <Input id="delay" type="text" inputmode="numeric" value={delayText} oninput={(e) => onDelayInput(e.currentTarget.value)} aria-invalid={delayError} aria-describedby="delay-error" />
+            {#if delayError}
+              <p id="delay-error" class="text-destructive text-sm">Enter a whole number of milliseconds, 0 or more.</p>
+            {/if}
+          </div>
+        </div>
         <div class="flex items-center justify-between gap-4">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Preferred Variants</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Comma-separated, for example <code>de-CH,en-GB</code>. The server
-              uses them when it detects the language of a text.
-            </p>
-          </div>
-          <Input
-            size="sm"
-            class="w-72"
-            placeholder="de-CH,en-GB"
-            data-testid="preferred-variants"
-            bind:value={preferredVariants}
-          />
+          {@render row('activation-key', 'Activation key', 'Show highlights only after you press this key twice.')}
+          <Select.Root type="single" value={activationKey} onValueChange={onActivationKeyChange}>
+            <Select.Trigger id="activation-key" class="w-44">{activationKeyLabels[activationKey]}</Select.Trigger>
+            <Select.Content>
+              {#each [ActivationKey.Shift, ActivationKey.Control, ActivationKey.Off] as key}
+                <Select.Item value={key}>{activationKeyLabels[key]}</Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
         </div>
-      </div>
-
-      <div class="flex items-center justify-between gap-4">
-        <p
-          class="text-xs {serverStatus?.ok === false ? 'text-red-700 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}"
-          data-testid="server-status"
-        >
-          {#if serverStatus}
-            {serverStatus.ok ? `Connected: ${serverStatus.message}` : serverStatus.message}
-          {/if}
-        </p>
-        <Button size="sm" disabled={serverBusy} on:click={saveServer}>Save and Test</Button>
-      </div>
-    </Card>
-
-    <!-- ── GENERAL ───────────────────────────── -->
-    <Card class="space-y-6">
-      <h2 class="pb-1 text-xs uppercase tracking-wider">General</h2>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Enable on New Sites by Default</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Can make some apps behave abnormally.
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            bind:checked={defaultEnabled}
-            class="h-5 w-5"
-          />
-        </div>
-      </div>
-
-      <div class="space-y-5">
         <div class="flex items-center justify-between gap-4">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Delay</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Wait this many milliseconds after typing stops before checking
-              the text again.
-            </p>
-          </div>
-          <input
-            type="number"
-            min="0"
-            step="50"
-            bind:value={delay}
-            class="w-44 rounded-lg border border-cream-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm outline-none transition focus:border-cream-300 focus:ring-2 focus:ring-primary-300 dark:border-cream-700 dark:bg-cream-900 dark:text-white dark:focus:border-cream-600 dark:focus:ring-primary-600"
-          />
+          {@render row('hotkey', 'Apply-suggestion hotkey', 'Applies the first suggestion to the last marked word.')}
+          <HotkeyRecorder {hotkey} onchange={onHotkeyChange} />
         </div>
-      </div>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Export Enabled Domains</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Downloads JSON of domains explicitly enabled.
-            </p>
-          </div>
-          <Button size="sm" on:click={exportEnabledDomainsJSON}
-            >Export JSON</Button
-          >
+        <div class="flex flex-col gap-2">
+          {@render row('user-dictionary', 'User dictionary', 'One word per line. These words are never marked as spelling mistakes.')}
+          <Textarea id="user-dictionary" rows={6} bind:value={userDict} />
         </div>
-      </div>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Activation Key</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Show highlights only after you press this key twice.
-            </p>
-          </div>
-          <Select size="sm" class="w-44" bind:value={activationKey}>
-            <option value={ActivationKey.Shift}>Double Shift</option>
-            <option value={ActivationKey.Control}>Double Control</option>
-            <option value={ActivationKey.Off}>Off</option>
-          </Select>
+        <div class="flex items-center justify-between gap-4">
+          {@render row('export-domains', 'Export enabled domains', 'Downloads a JSON list of the sites where checking is on.')}
+          <Button id="export-domains" variant="outline" onclick={exportEnabledDomainsJSON}>Export JSON</Button>
         </div>
-      </div>
+      </Card.Content>
+    </Card.Root>
 
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Apply Last Suggestion Hotkey</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Applies suggestion to last highlighted word.
-            </p>
-          </div>
-          <Textarea readonly bind:value={buttonText} />
-          <Button
-            size="sm"
-            color="light"
-            style="background-color: {isBlue ? 'blue' : ''}"
-            bind:this={modifyHotkeyButton}
-            on:click={() => {
-              startHotkeyCapture(modifyHotkeyButton);
-              isBlue = !isBlue;
-            }}>Modify Hotkey</Button
-          >
+    <Card.Root>
+      <Card.Header><Card.Title>Rules</Card.Title></Card.Header>
+      <Card.Content class="flex flex-col gap-6">
+        <div class="flex flex-col gap-2">
+          {@render row('disabled-rules', 'Disabled rules', 'LanguageTool rule IDs, one per line. "Disable rule" in a suggestion adds its rule here.')}
+          <Textarea id="disabled-rules" rows={6} bind:value={disabledRules} />
         </div>
-      </div>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">User Dictionary</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Each word should be on its own line. These words are never
-              marked as spelling mistakes.
-            </p>
-          </div>
-          <Textarea bind:value={userDict}></Textarea>
-        </div>
-      </div>
-    </Card>
-
-    <!-- ── RULES ─────────────────────────────── -->
-    <Card class="space-y-6">
-      <h2 class="pb-1 text-xs uppercase tracking-wider">Rules</h2>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Disabled Rules</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              LanguageTool rule IDs, one per line. "Disable rule" in a
-              suggestion adds its rule here.
-            </p>
-          </div>
-          <Textarea data-testid="disabled-rules" bind:value={disabledRules}></Textarea>
-        </div>
-      </div>
-
-      <div class="space-y-5">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <h3 class="text-sm">Ignored Suggestions</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              Show all suggestions again that you ignored.
-            </p>
-          </div>
-          <Button size="sm" disabled={ignoredCleared} on:click={clearIgnored}>
+        <div class="flex items-center justify-between gap-4">
+          {@render row('clear-ignored', 'Ignored suggestions', 'Show all suggestions again that you ignored.')}
+          <Button id="clear-ignored" variant="outline" disabled={ignoredCleared} onclick={clearIgnored}>
             {ignoredCleared ? 'Cleared' : 'Clear'}
           </Button>
         </div>
-      </div>
-    </Card>
+      </Card.Content>
+    </Card.Root>
   </div>
-</div>
+</main>

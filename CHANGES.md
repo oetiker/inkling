@@ -1,3 +1,5 @@
+- The settings page has a new, cleaner look. The "Delay" field now refuses an empty or negative value with a message instead of silently saving 0, and pressing Escape while setting the apply-suggestion hotkey keeps the old one.
+- The settings page and the popup no longer load fonts from Google.
 - The Inkling icon is now a blue and yellow chisel-tip highlighter in place of the reading glasses, in the toolbar, the extensions list, the popup and the settings page. The toolbar gets real 16 and 32 pixel versions, so the icon stays sharp and readable on dark toolbars.
 - Clicking into a marked word now puts the cursor there, so you can fix it by typing. The suggestion card still opens next to the word but no longer takes the keyboard; typing, Esc or a click elsewhere closes it, and pressing the activation key twice still moves the keyboard into it.
 - Mistakes are marked with a soft highlighter fill instead of a thick underline, in three colors: red for spelling, amber for grammar and punctuation (including all comma rules and mixed-up words such as "their/there" or "das/dass"), blue for style.

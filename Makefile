@@ -36,7 +36,7 @@ test-unit: deps
 	cd $(EXT) && pnpm test:unit
 
 test-chromium: deps
-	cd $(EXT) && TARGET_BROWSER=chrome pnpm build
+	cd $(EXT) && INKLING_TEST_BUILD=1 TARGET_BROWSER=chrome pnpm build
 	cd $(EXT) && $(HEADED) pnpm exec playwright test --headed --project=chromium
 
 test-firefox: deps

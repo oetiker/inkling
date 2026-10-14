@@ -1,6 +1,6 @@
-import sveltePreprocess from 'svelte-preprocess';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-// Read by svelte-check; the build passes the same preprocessor in vite.config.ts.
+// Read by svelte-check and, automatically, by the vite build.
 export default {
-	preprocess: sveltePreprocess(),
+	preprocess: vitePreprocess(),
 };

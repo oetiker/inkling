@@ -36,6 +36,14 @@ export function makeExtensionCSP(isDev: boolean): string {
 	].join('; ')};`;
 }
 
+/**
+ * Test builds (`make test-chromium`) get the loopback origin up front, so the
+ * settings page's permission request resolves without a browser dialog that
+ * Playwright cannot click. The pattern has no port because the settings page
+ * requests `http://127.0.0.1/*`.
+ */
+const testHostPermissions = process.env.INKLING_TEST_BUILD === '1' ? ['http://127.0.0.1/*'] : [];
+
 export default defineManifest({
 	name: `Inkling${isDev ? ' ➡️ Dev' : ''}`,
 	description: packageData.description,
@@ -102,4 +110,5 @@ export default defineManifest({
 	},
 	// Requested from the settings page for the origin of the configured server.
 	optional_host_permissions: ['https://*/*', 'http://*/*'],
+	...(testHostPermissions.length > 0 ? { host_permissions: testHostPermissions } : {}),
 });
