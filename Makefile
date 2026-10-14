@@ -1,5 +1,5 @@
 # Build and test the browser extension. All work happens in packages/extension;
-# the components and lint-framework packages are built first because it imports them.
+# the lint-framework package is built first because the extension imports it.
 
 EXT := packages/extension
 # Playwright runs Chromium extensions only in headed mode; xvfb-run gives it a display.
@@ -13,7 +13,6 @@ install:
 	pnpm install
 
 deps: install
-	cd packages/components && pnpm build
 	cd packages/lint-framework && pnpm build
 
 ## Build build/ and package/inkling-chrome.zip
@@ -50,4 +49,4 @@ icons:
 	for s in 16 32 48 128; do inkscape $(EXT)/public/logo.svg -o $(EXT)/public/icon-$$s.png -w $$s; done
 
 clean:
-	rm -rf $(EXT)/build $(EXT)/package packages/components/dist packages/lint-framework/dist
+	rm -rf $(EXT)/build $(EXT)/package packages/lint-framework/dist
