@@ -13,6 +13,7 @@
 			"!**/.claude",
 			"!**/test-results",
 			"!**/packages/extension/tests/pages/**/*",
+			"!**/packages/extension/src/lib/components/ui/**/*",
 			"!**/node_modules",
 			"!**/mariadb_data",
 			"!**/dist",

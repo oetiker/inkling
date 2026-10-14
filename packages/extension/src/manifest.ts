@@ -15,8 +15,8 @@ export function makeExtensionCSP(isDev: boolean): string {
 	const objectSrc = ["'self'"]; // standard
 	// The LanguageTool server is chosen by the user, so any http(s) origin may be needed.
 	const connectSrc = ["'self'", 'https:', 'http:']; // WebSocket goes here
-	const styleSrc = ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'];
-	const fontSrc = ["'self'", 'https://fonts.gstatic.com', 'data:'];
+	const styleSrc = ["'self'", "'unsafe-inline'"];
+	const fontSrc = ["'self'", 'data:'];
 
 	if (isDev) {
 		// `ws://` and `http://` use the same host:port → list both

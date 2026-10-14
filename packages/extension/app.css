@@ -1,92 +1,128 @@
 @import "tailwindcss";
 @import "components/components.css";
+@import "tw-animate-css";
+@import "shadcn-svelte/tailwind.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-	--font-sans: "Atkinson Hyperlegible", sans-serif;
-	--font-serif: Domine, serif;
-
-	--color-primary-50: #fef4e7; /* honey bronze */
-	--color-primary-100: #fce9cf;
-	--color-primary-200: #f9d49f;
-	--color-primary-300: #f7be6e;
-	--color-primary-400: #f4a83e;
-	--color-primary: #f1920e;
-	--color-primary-600: #c1750b;
-	--color-primary-700: #915808;
-	--color-primary-800: #603b06;
-	--color-primary-900: #301d03;
-	--color-primary-950: #221402;
-
-	--color-accent-50: #fee7e9; /* hot fuchsia */
-	--color-accent-100: #fccfd3;
-	--color-accent-200: #f99fa6;
-	--color-accent-300: #f76e7a;
-	--color-accent-400: #f43e4d;
-	--color-accent: #f10e21;
-	--color-accent-600: #c10b1a;
-	--color-accent-700: #910814;
-	--color-accent-800: #60060d;
-	--color-accent-900: #300307;
-	--color-accent-950: #220205;
-
-	--color-cream: #fef4e7; /* simple cream */
-	--color-cream-100: #fce9cf;
-	--color-cream-200: #f9d49f;
-	--color-cream-300: #f7be6e;
-	--color-cream-400: #f4a83e;
-	--color-cream-500: #f1920e;
-	--color-cream-600: #c1750b;
-	--color-cream-700: #915808;
-	--color-cream-800: #603b06;
-	--color-cream-900: #301d03;
-	--color-cream-950: #221402;
-
-	--color-champagne-mist-50: #fef4e7;
-	--color-champagne-mist-100: #fce9cf;
-	--color-champagne-mist-200: #fad49e;
-	--color-champagne-mist-300: #f7be6e;
-	--color-champagne-mist-400: #f5a83d;
-	--color-champagne-mist-500: #f2930d;
-	--color-champagne-mist-600: #c2750a;
-	--color-champagne-mist-700: #915808;
-	--color-champagne-mist-800: #613b05;
-	--color-champagne-mist-900: #301d03;
-	--color-champagne-mist-950: #221502;
-
-	--color-white: #fffdfa;
-	--color-white-100: #fceacf;
-	--color-white-200: #fad59e;
-	--color-white-300: #f7c06e;
-	--color-white-400: #f5ab3d;
-	--color-white-500: #f2960d;
-	--color-white-600: #c2780a;
-	--color-white-700: #915a08;
-	--color-white-800: #613c05;
-	--color-white-900: #301e03;
-	--color-white-950: #221502;
+@theme inline {
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
 }
 
-code {
-	@apply bg-primary-100 rounded p-1 dark:text-black;
+:root {
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.145 0 0);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.145 0 0);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.145 0 0);
+	--primary: oklch(0.205 0 0);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.97 0 0);
+	--secondary-foreground: oklch(0.205 0 0);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.556 0 0);
+	--accent: oklch(0.97 0 0);
+	--accent-foreground: oklch(0.205 0 0);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(0.922 0 0);
+	--input: oklch(0.922 0 0);
+	--ring: oklch(0.708 0 0);
+	--chart-1: oklch(0.87 0 0);
+	--chart-2: oklch(0.556 0 0);
+	--chart-3: oklch(0.439 0 0);
+	--chart-4: oklch(0.371 0 0);
+	--chart-5: oklch(0.269 0 0);
+	--radius: 0.625rem;
+	--sidebar: oklch(0.985 0 0);
+	--sidebar-foreground: oklch(0.145 0 0);
+	--sidebar-primary: oklch(0.205 0 0);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.97 0 0);
+	--sidebar-accent-foreground: oklch(0.205 0 0);
+	--sidebar-border: oklch(0.922 0 0);
+	--sidebar-ring: oklch(0.708 0 0);
 }
 
-a {
-	@apply underline;
+.dark {
+	--background: oklch(0.145 0 0);
+	--foreground: oklch(0.985 0 0);
+	--card: oklch(0.205 0 0);
+	--card-foreground: oklch(0.985 0 0);
+	--popover: oklch(0.205 0 0);
+	--popover-foreground: oklch(0.985 0 0);
+	--primary: oklch(0.922 0 0);
+	--primary-foreground: oklch(0.205 0 0);
+	--secondary: oklch(0.269 0 0);
+	--secondary-foreground: oklch(0.985 0 0);
+	--muted: oklch(0.269 0 0);
+	--muted-foreground: oklch(0.708 0 0);
+	--accent: oklch(0.269 0 0);
+	--accent-foreground: oklch(0.985 0 0);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 15%);
+	--ring: oklch(0.556 0 0);
+	--chart-1: oklch(0.87 0 0);
+	--chart-2: oklch(0.556 0 0);
+	--chart-3: oklch(0.439 0 0);
+	--chart-4: oklch(0.371 0 0);
+	--chart-5: oklch(0.269 0 0);
+	--sidebar: oklch(0.205 0 0);
+	--sidebar-foreground: oklch(0.985 0 0);
+	--sidebar-primary: oklch(0.488 0.243 264.376);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.269 0 0);
+	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.556 0 0);
 }
 
-#app {
-	@apply min-h-screen bg-white text-black dark:bg-black dark:text-white transition-colors duration-150;
-
-	font-family:
-		Atkinson Hyperlegible,
-		sans-serif;
-}
-
-h1,
-h2,
-h3,
-h4 {
-	font-family: Domine, serif;
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
 }
