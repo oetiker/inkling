@@ -33,6 +33,11 @@ chrome.runtime.onMessage.addListener((message: { kind?: string }) => {
 	}
 });
 
+// A new document in this tab ends a pause the user set for it.
+if (window === window.top) {
+	void ProtocolClient.pageStarted();
+}
+
 const syncGoogleDocsBridge = createGoogleDocsBridgeSync(fw);
 
 const keepAliveCallback = () => {

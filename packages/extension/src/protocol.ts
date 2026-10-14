@@ -24,7 +24,10 @@ export type Request =
 	| SetActivationKeyRequest
 	| GetHotkeyRequest
 	| SetHotkeyRequest
-	| OpenOptionsRequest;
+	| OpenOptionsRequest
+	| GetTabPausedRequest
+	| SetTabPausedRequest
+	| PageStartedRequest;
 
 export type Response =
 	| LintResponse
@@ -38,7 +41,8 @@ export type Response =
 	| GetEnabledDomainsResponse
 	| GetUserDictionaryResponse
 	| GetHotkeyResponse
-	| GetActivationKeyResponse;
+	| GetActivationKeyResponse
+	| GetTabPausedResponse;
 
 export type LintRequest = {
 	kind: 'lint';
@@ -247,3 +251,24 @@ export type UnitResponse = {
 export function createUnitResponse(): UnitResponse {
 	return { kind: 'unit' };
 }
+
+export type GetTabPausedRequest = {
+	kind: 'getTabPaused';
+	tabId: number;
+};
+
+export type GetTabPausedResponse = {
+	kind: 'getTabPaused';
+	paused: boolean;
+};
+
+export type SetTabPausedRequest = {
+	kind: 'setTabPaused';
+	tabId: number;
+	paused: boolean;
+};
+
+/** Sent once by the top frame's content script when a new document starts. */
+export type PageStartedRequest = {
+	kind: 'pageStarted';
+};

@@ -12,6 +12,8 @@ import {
 	type GetEnabledDomainsResponse,
 	type GetHotkeyResponse,
 	type GetServerSettingsResponse,
+	type GetTabPausedRequest,
+	type GetTabPausedResponse,
 	type GetUserDictionaryResponse,
 	type Hotkey,
 	type IgnoreLintRequest,
@@ -29,6 +31,7 @@ import {
 	type SetHotkeyRequest,
 	type SetRuleEnabledRequest,
 	type SetServerSettingsRequest,
+	type SetTabPausedRequest,
 	type SetUserDictionaryRequest,
 	type TestServerRequest,
 	type TestServerResponse,
@@ -36,6 +39,7 @@ import {
 } from '../protocol';
 import { domainLookupCandidates, domainWriteTarget } from './domainKeys';
 import { checkWithLanguageTool, fetchServerVersion } from './languageTool';
+import { clearTabPause, isTabPaused, setTabPaused } from './tabPause';
 
 /** Wait this long after typing stops before checking, unless the user picks another delay. */
 const DEFAULT_DELAY_MS = 500;
@@ -44,6 +48,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	handleRequest(request, sender).then(sendResponse);
 
 	return true;
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+	void clearTabPause(tabId);
 });
 
 const defaultEnabledDomains = [
@@ -161,10 +169,35 @@ function handleRequest(message: Request, sender?: chrome.runtime.MessageSender):
 			return handleGetHotkey();
 		case 'setHotkey':
 			return handleSetHotkey(message);
+		case 'getTabPaused':
+			return handleGetTabPaused(message);
+		case 'setTabPaused':
+			return handleSetTabPaused(message);
+		case 'pageStarted':
+			return handlePageStarted(sender);
 		case 'openOptions':
 			chrome.runtime.openOptionsPage();
 			return Promise.resolve(createUnitResponse());
 	}
+}
+
+async function handleGetTabPaused(req: GetTabPausedRequest): Promise<GetTabPausedResponse> {
+	return { kind: 'getTabPaused', paused: await isTabPaused(req.tabId) };
+}
+
+async function handleSetTabPaused(req: SetTabPausedRequest): Promise<UnitResponse> {
+	if (await setTabPaused(req.tabId, req.paused)) {
+		await refreshTabs([req.tabId]);
+	}
+	return createUnitResponse();
+}
+
+/** A new document in a tab ends its pause; History-API navigation does not get here. */
+async function handlePageStarted(sender?: chrome.runtime.MessageSender): Promise<UnitResponse> {
+	if (sender?.tab?.id != null && sender.frameId === 0) {
+		await clearTabPause(sender.tab.id);
+	}
+	return createUnitResponse();
 }
 
 /** Handle a request for linting. */
@@ -222,6 +255,10 @@ async function shouldLintForRequest(
 	req: LintRequest,
 	sender?: chrome.runtime.MessageSender,
 ): Promise<boolean> {
+	if (await isTabPaused(sender?.tab?.id)) {
+		return false;
+	}
+
 	if (await enabledForDomain(req.domain)) {
 		return true;
 	}
