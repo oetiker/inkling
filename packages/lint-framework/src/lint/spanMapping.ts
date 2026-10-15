@@ -79,30 +79,41 @@ export function remapSpanForTextEdit(
 }
 
 /**
- * Return a lint whose span is valid for `currentSource`, or `null` if it should
- * be hidden until the next lint pass.
+ * Return a function that gives a lint whose span is valid for `currentSource`, or
+ * `null` if the lint should be hidden until the next lint pass. The lints of one check
+ * share their source, so the edit is computed once per source instead of once per
+ * lint: on a long text with many lints, that was most of each redraw.
  */
-export function remapLintToCurrentSource(
-	lint: UnpackedLint,
+export function createLintRemapper(
 	currentSource: string,
-): UnpackedLint | null {
-	if (lint.source === currentSource) {
-		return lint;
-	}
+): (lint: UnpackedLint) => UnpackedLint | null {
+	let lastSource: string | null = null;
+	let lastEdit: SingleTextEdit | null = null;
 
-	const span = remapSpanForTextEdit(lint.span, computeSingleTextEdit(lint.source, currentSource));
+	return (lint) => {
+		if (lint.source === currentSource) {
+			return lint;
+		}
 
-	if (span == null) {
-		return null;
-	}
+		if (lint.source !== lastSource) {
+			lastSource = lint.source;
+			lastEdit = computeSingleTextEdit(lint.source, currentSource);
+		}
 
-	if (currentSource.slice(span.start, span.end) !== lint.problem_text) {
-		return null;
-	}
+		const span = remapSpanForTextEdit(lint.span, lastEdit);
 
-	return {
-		...lint,
-		span,
-		source: currentSource,
+		if (span == null) {
+			return null;
+		}
+
+		if (currentSource.slice(span.start, span.end) !== lint.problem_text) {
+			return null;
+		}
+
+		return {
+			...lint,
+			span,
+			source: currentSource,
+		};
 	};
 }

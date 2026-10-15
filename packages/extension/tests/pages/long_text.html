@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Long text</title>
+	</head>
+	<body>
+		<!-- One block with many lines and many mistakes, like a long mail in a web mail editor. -->
+		<div id="editor" contenteditable="true" style="width: 800px; height: 500px; overflow: auto"></div>
+		<textarea id="field" style="width: 800px; height: 500px"></textarea>
+		<script>
+			const lines = Array.from(
+				{ length: 150 },
+				(_, i) =>
+					`Zeile ${i}: Das ist ein Tset mit einigen Wörtern, damit der Text lang genug wird. Noch ein Tset folgt hier, und dann geht es weiter mit dem Rest.`,
+			);
+			const params = new URLSearchParams(location.search);
+			if (params.get('kind') === 'textarea') {
+				document.getElementById('editor').remove();
+				document.getElementById('field').value = lines.join('\n\n');
+			} else {
+				document.getElementById('field').remove();
+				// Bold words split lines into several text nodes.
+				document.getElementById('editor').innerHTML = lines
+					.map((line, i) => (i % 3 === 0 ? line.replace('Wörtern', '<b>Wörtern</b>') : line))
+					.join('<br><br>');
+			}
+		</script>
+	</body>
+</html>

@@ -1,3 +1,4 @@
+- Typing in a long text with many marks, such as a long mail in a web mail editor or a long text field, is fast again: each key took up to several seconds to appear while Inkling was active, and now shows at once.
 - After installation, Inkling opens its settings page when no server is set. When the "Server URL" field is empty, the settings page offers a "Use public server" button that fills in https://api.languagetool.org for a test, with a note that this server has usage limits and that your text goes to LanguageTool.
 - Firefox now asks during installation for permission to send website content and personal communications (such as emails) to the LanguageTool server, as addons.mozilla.org requires for new extensions.
 - The popup has a new look with a "Check this site" switch and a "Pause in this tab" button: a pause stops checking only in the current tab and ends when you reload the tab, open another page in it or close it.

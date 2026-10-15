@@ -29,7 +29,11 @@ export default function computeLintBoxes(
 	el: HTMLElement,
 	lint: UnpackedLint,
 	rule: string,
-	opts: { ignoreLint?: (hash: string) => Promise<void> },
+	opts: {
+		ignoreLint?: (hash: string) => Promise<void>;
+		/** Finds the range of a span in `el`; pass one per redraw to share its DOM walk. */
+		findRange?: (span: Span) => Range | null;
+	},
 ): IgnorableLintBox[] {
 	const googleDocsBoxes = maybeComputeGoogleDocsLintBoxes(el, lint, rule, opts);
 	if (googleDocsBoxes != null) {
@@ -42,7 +46,7 @@ export default function computeLintBoxes(
 		if (isFormEl(el)) {
 			range = new TextFieldRange(el, lint.span.start, lint.span.end);
 		} else {
-			range = getRangeForTextSpan(el, lint.span as Span);
+			range = (opts.findRange ?? ((span) => getRangeForTextSpan(el, span)))(lint.span as Span);
 		}
 
 		if (!range) {

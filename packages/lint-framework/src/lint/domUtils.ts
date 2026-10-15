@@ -99,37 +99,59 @@ export function leafNodes(node: Node): Node[] {
  * @param span
  */
 export function getRangeForTextSpan(target: Element, span: Span): Range | null {
-	const children = leafNodes(target);
+	return createTextSpanRangeFinder(target)(span);
+}
 
-	const range = document.createRange();
+/**
+ * Return a function that does `getRangeForTextSpan` for many spans in `target`. It
+ * walks the DOM once and then finds each span by binary search, instead of walking
+ * the whole DOM per span. Valid only until the DOM of `target` changes.
+ */
+export function createTextSpanRangeFinder(target: Element): (span: Span) => Range | null {
+	const leaves = leafNodes(target);
+	const starts: number[] = [];
+	const ends: number[] = [];
 	let traversed = 0;
 
-	let startFound = false;
-
-	for (let i = 0; i < children.length; i++) {
-		const child = children[i] as HTMLElement;
-
-		if (child.nodeName === 'BR') {
-			traversed += 1;
-			continue;
-		}
-
-		const childText = child.textContent ?? '';
-
-		if (traversed + childText.length > span.start && !startFound) {
-			range.setStart(child, span.start - traversed);
-			startFound = true;
-		}
-
-		if (startFound && traversed + childText.length >= span.end) {
-			range.setEnd(child, span.end - traversed);
-			return range;
-		}
-
-		traversed += childText?.length ?? 0;
+	for (const leaf of leaves) {
+		starts.push(traversed);
+		traversed += leaf.nodeName === 'BR' ? 1 : (leaf.textContent ?? '').length;
+		ends.push(traversed);
 	}
 
-	return null;
+	/** The first leaf from `from` on that is not a `<br>` and ends after (or at) `offset`. */
+	const findLeaf = (from: number, offset: number, inclusive: boolean): number => {
+		let lo = from;
+		let hi = leaves.length;
+		while (lo < hi) {
+			const mid = (lo + hi) >>> 1;
+			if (inclusive ? ends[mid] >= offset : ends[mid] > offset) {
+				hi = mid;
+			} else {
+				lo = mid + 1;
+			}
+		}
+		while (lo < leaves.length && leaves[lo].nodeName === 'BR') {
+			lo++;
+		}
+		return lo;
+	};
+
+	return (span) => {
+		const start = findLeaf(0, span.start, false);
+		if (start >= leaves.length) {
+			return null;
+		}
+		const end = findLeaf(start, span.end, true);
+		if (end >= leaves.length) {
+			return null;
+		}
+
+		const range = document.createRange();
+		range.setStart(leaves[start], span.start - starts[start]);
+		range.setEnd(leaves[end], span.end - starts[end]);
+		return range;
+	};
 }
 
 const sharedRange: Range | null = typeof document !== 'undefined' ? document.createRange() : null;

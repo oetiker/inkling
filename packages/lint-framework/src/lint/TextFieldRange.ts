@@ -141,10 +141,17 @@ export default class TextFieldRange {
 	 * Updates the mirror's text node with the current value of the field.
 	 */
 	private syncMirror(): void {
-		// Ensure text, scroll, and position reflect the current field
-		this.arena.text.nodeValue = this.field.value;
-		this.arena.mirror.scrollTop = this.field.scrollTop;
-		this.arena.mirror.scrollLeft = this.field.scrollLeft;
+		// Ensure text, scroll, and position reflect the current field. Write only what
+		// changed: a rewrite forces a layout of the whole mirror, and this runs per lint.
+		if (this.arena.text.nodeValue !== this.field.value) {
+			this.arena.text.nodeValue = this.field.value;
+		}
+		if (this.arena.mirror.scrollTop !== this.field.scrollTop) {
+			this.arena.mirror.scrollTop = this.field.scrollTop;
+		}
+		if (this.arena.mirror.scrollLeft !== this.field.scrollLeft) {
+			this.arena.mirror.scrollLeft = this.field.scrollLeft;
+		}
 		TextFieldRange.positionMirror(this.arena.mirror, this.field);
 	}
 

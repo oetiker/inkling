@@ -1,12 +1,12 @@
 import { closestBox, type IgnorableLintBox } from './Box';
 import { isGoogleDocsTarget } from './computeLintBoxes/googleDocsUtilities';
 import computeLintBoxes from './computeLintBoxes/index';
-import { isHeading, isVisible } from './domUtils';
+import { createTextSpanRangeFinder, isHeading, isVisible } from './domUtils';
 import { getCaretPosition, getCMRoot } from './editorUtils';
 import Highlights from './Highlights';
 import PopupHandler from './PopupHandler';
-import { remapLintToCurrentSource } from './spanMapping';
-import type { LintOptions } from './types';
+import { createLintRemapper } from './spanMapping';
+import type { LintOptions, Span } from './types';
 import type { UnpackedLintGroups } from './unpackLint';
 
 type ActivationKey = 'off' | 'shift' | 'control';
@@ -375,18 +375,23 @@ export default class LintFramework {
 					return [];
 				}
 
+				// Both walk the whole text or DOM, so do it once per target, not once per lint.
+				const remap = createLintRemapper(text);
+				let findRange: ((span: Span) => Range | null) | undefined;
+				const findRangeOnce = (span: Span) => {
+					findRange ??= createTextSpanRangeFinder(target);
+					return findRange(span);
+				};
+
 				return Object.entries(lints).flatMap(([ruleName, ls]) =>
 					ls.flatMap((lint) => {
-						const currentLint = isCM
-							? lint.source === text
-								? lint
-								: null
-							: remapLintToCurrentSource(lint, text);
+						const currentLint = isCM ? (lint.source === text ? lint : null) : remap(lint);
 						if (currentLint == null) {
 							return [];
 						}
 
 						return computeLintBoxes(target, currentLint, ruleName, {
+							findRange: findRangeOnce,
 							ignoreLint: this.actions.ignoreLint
 								? async (hash: string) => {
 										await this.actions.ignoreLint?.(hash);
