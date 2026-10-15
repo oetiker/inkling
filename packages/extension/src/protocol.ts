@@ -42,7 +42,8 @@ export type Response =
 	| GetUserDictionaryResponse
 	| GetHotkeyResponse
 	| GetActivationKeyResponse
-	| GetTabPausedResponse;
+	| GetTabPausedResponse
+	| ErrorResponse;
 
 export type LintRequest = {
 	kind: 'lint';
@@ -274,3 +275,21 @@ export type PageStartedRequest = {
 	/** When the document started, in ms since the epoch. A pause set earlier ends. */
 	startedAt: number;
 };
+
+/** Sent instead of a normal response when the background failed to handle a request. */
+export type ErrorResponse = {
+	kind: 'error';
+	message: string;
+};
+
+export function createErrorResponse(error: unknown): ErrorResponse {
+	return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
+}
+
+/** Returns the response, or throws when it is an error response. */
+export function unwrapResponse<T>(response: T | ErrorResponse): T {
+	if ((response as ErrorResponse | undefined)?.kind === 'error') {
+		throw new Error((response as ErrorResponse).message);
+	}
+	return response as T;
+}

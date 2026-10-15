@@ -32,7 +32,6 @@ $effect(() => {
 async function onSiteChange(checked: boolean) {
 	if (host == null || tab == null) return;
 	const wasEnabled = enabled;
-	const wasPaused = paused;
 	enabledTouched = true;
 	enabled = checked;
 	try {
@@ -43,6 +42,7 @@ async function onSiteChange(checked: boolean) {
 	}
 	if (!checked) {
 		// Always sent: the pause may exist although the initial read has not shown it yet.
+		const wasPaused = paused;
 		pausedTouched = true;
 		paused = false;
 		try {

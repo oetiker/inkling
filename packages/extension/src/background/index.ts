@@ -2,6 +2,7 @@ import type { UnpackedLintGroups } from 'lint-framework';
 import {
 	ActivationKey,
 	type AddToUserDictionaryRequest,
+	createErrorResponse,
 	createUnitResponse,
 	type GetActivationKeyResponse,
 	type GetDefaultStatusResponse,
@@ -46,7 +47,11 @@ import { clearTabPause, endTabPauseAt, isTabPaused, setTabPaused } from './tabPa
 const DEFAULT_DELAY_MS = 500;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-	handleRequest(request, sender).then(sendResponse);
+	// Answer a failure too, otherwise the caller waits forever.
+	Promise.resolve()
+		.then(() => handleRequest(request, sender))
+		.catch(createErrorResponse)
+		.then(sendResponse);
 
 	return true;
 });

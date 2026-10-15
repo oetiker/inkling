@@ -58,4 +58,5 @@ onDestroy(stop);
   >
     <span id={id ? `${id}-text` : undefined}>{recording ? 'Press keys…' : 'Change hotkey'}</span>
   </Button>
+  <span class="sr-only" aria-live="polite">{recording ? 'Press keys…' : ''}</span>
 </div>

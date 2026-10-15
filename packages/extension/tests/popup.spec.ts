@@ -211,3 +211,11 @@ test('Popup shows the logo and opens the settings', async ({ context }) => {
 	await popup.getByRole('button', { name: 'Settings' }).click();
 	expect((await optionsPage).url()).toContain('/options.html');
 });
+
+test('A failing background handler answers with an error instead of hanging', async ({
+	context,
+}) => {
+	// setHotkey without a hotkey makes the handler throw.
+	const result = await sendFromExtension(context, { kind: 'setHotkey' });
+	expect(result).toMatchObject({ kind: 'error' });
+});
