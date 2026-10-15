@@ -56,7 +56,6 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 } {
 	let bridgeClient: GoogleDocsBridgeClient | null = null;
 	let disposed = false;
-	let bridgeAttached = false;
 	let syncInFlight = false;
 	let syncPending = false;
 	let lastCloneSignature = '';
@@ -528,7 +527,6 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 
 		if (!isGoogleDocsPage()) {
 			disposeBridgeClient();
-			bridgeAttached = false;
 			return;
 		}
 
@@ -552,10 +550,9 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 			editor.setAttribute(GOOGLE_DOCS_SYNCING_ATTR, 'true');
 
 			const changed = applySnapshot(target, buildSnapshot(editor));
-			if (!bridgeAttached) {
-				await fw.addTarget(target);
-				bridgeAttached = true;
-			}
+			// Adding a known target does nothing. A mirror the framework dropped while it
+			// was out of the page, or a new one after the editor was replaced, comes back.
+			await fw.addTarget(target);
 
 			if (changed) {
 				await fw.update();

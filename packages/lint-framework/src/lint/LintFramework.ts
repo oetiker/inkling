@@ -178,15 +178,11 @@ export default class LintFramework {
 			return;
 		}
 
+		this.dropDetachedTargets();
+
 		if (this.targets.size !== 0) {
 			const request = Promise.all(
 				this.onScreenTargets().map(async (target) => {
-					if (!document.contains(target)) {
-						this.targets.delete(target);
-						this.detachTargetListeners(target);
-						return { target: null as HTMLElement | null, lints: {} };
-					}
-
 					const { text, isCM, newLineIndices } = this.getTargetText(target);
 
 					if (!text || text.length > 120000) {
@@ -334,6 +330,19 @@ export default class LintFramework {
 	/** Return the last known ignorable lint boxes rendered on-screen. */
 	public getLastIgnorableLintBoxes(): IgnorableLintBox[] {
 		return this.lastLintBoxes;
+	}
+
+	/**
+	 * Forget the targets the page has removed, with their listeners and observers.
+	 * A target the page puts back is found again by the next scan.
+	 */
+	private dropDetachedTargets() {
+		for (const target of this.targets) {
+			if (!target.isConnected) {
+				this.targets.delete(target);
+				this.detachTargetListeners(target);
+			}
+		}
 	}
 
 	private attachTargetListeners(target: Node) {

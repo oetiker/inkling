@@ -1,61 +1,12 @@
 import type { BrowserContext, CDPSession, Page } from '@playwright/test';
-import { getBackground, MOCK_SERVER_URL, storageSet } from './extensionPages';
+import { evaluate, listenerTypes, pageWithMistake } from './contentScriptWorld';
+import { getBackground } from './extensionPages';
 import { expect, test } from './fixtures';
 
 test.skip(
 	({ browserName }) => browserName !== 'chromium',
 	'Playwright cannot open Firefox extension pages',
 );
-
-/** Evaluate `expression` in the content script's world and return the result by value. */
-async function evaluate(cdp: CDPSession, contextId: number, expression: string): Promise<unknown> {
-	const { result } = await cdp.send('Runtime.evaluate', {
-		expression,
-		contextId,
-		returnByValue: true,
-	});
-	return result.value;
-}
-
-/** The event types the content script listens to on the object `expression` evaluates to. */
-async function listenerTypes(
-	cdp: CDPSession,
-	contextId: number,
-	expression: string,
-): Promise<string[]> {
-	const { result } = await cdp.send('Runtime.evaluate', { expression, contextId });
-	const { listeners } = await cdp.send('DOMDebugger.getEventListeners', {
-		objectId: result.objectId!,
-	});
-	return listeners.map((listener) => listener.type).sort();
-}
-
-/**
- * Open a page, type a mistake into `editor` and attach to the content script's world.
- * Playwright neither reports errors of that world nor reaches into it; the DevTools
- * protocol does both.
- */
-async function pageWithMistake(context: BrowserContext, file: string, editor: string) {
-	await storageSet(context, {
-		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
-	});
-	const page = await context.newPage();
-	const cdp = await context.newCDPSession(page);
-	const errors: string[] = [];
-	cdp.on('Runtime.exceptionThrown', ({ exceptionDetails }) =>
-		errors.push(exceptionDetails.exception?.description ?? exceptionDetails.text),
-	);
-	let contentScript: number | undefined;
-	cdp.on('Runtime.executionContextCreated', ({ context }) => {
-		if (context.name === 'Inkling') contentScript = context.id;
-	});
-	await cdp.send('Runtime.enable');
-
-	await page.goto(`http://localhost:18081/${file}`);
-	await page.locator(editor).fill('Das ist ein Tset.');
-	await expect.poll(() => contentScript).toBeDefined();
-	return { page, cdp, errors, contentScript: contentScript! };
-}
 
 async function reloadExtension(context: BrowserContext, page: Page) {
 	const background = await getBackground(context);
