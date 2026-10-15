@@ -5,6 +5,8 @@ import {
 	createErrorResponse,
 	createUnitResponse,
 	type GetActivationKeyResponse,
+	type GetActiveRequest,
+	type GetActiveResponse,
 	type GetDefaultStatusResponse,
 	type GetDelayResponse,
 	type GetDisabledRulesResponse,
@@ -142,6 +144,8 @@ function handleRequest(message: Request, sender?: chrome.runtime.MessageSender):
 	switch (message.kind) {
 		case 'lint':
 			return handleLint(message, sender);
+		case 'getActive':
+			return handleGetActive(message, sender);
 		case 'getServerSettings':
 			return handleGetServerSettings();
 		case 'setServerSettings':
@@ -215,9 +219,19 @@ async function handlePageStarted(
 	sender?: chrome.runtime.MessageSender,
 ): Promise<UnitResponse> {
 	if (sender?.tab?.id != null && sender.frameId === 0) {
-		await endTabPauseAt(sender.tab.id, req.startedAt);
+		if (await endTabPauseAt(sender.tab.id, req.startedAt)) {
+			// The new page may have asked whether it is active before the pause ended.
+			await refreshTabs([sender.tab.id]);
+		}
 	}
 	return createUnitResponse();
+}
+
+async function handleGetActive(
+	req: GetActiveRequest,
+	sender?: chrome.runtime.MessageSender,
+): Promise<GetActiveResponse> {
+	return { kind: 'getActive', active: await shouldLintForRequest(req, sender) };
 }
 
 /** Handle a request for linting. */
@@ -272,7 +286,7 @@ async function removeDismissedLints(groups: UnpackedLintGroups): Promise<Unpacke
 }
 
 async function shouldLintForRequest(
-	req: LintRequest,
+	req: { domain: string },
 	sender?: chrome.runtime.MessageSender,
 ): Promise<boolean> {
 	if (await isTabPaused(sender?.tab?.id)) {

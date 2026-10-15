@@ -33,6 +33,30 @@ function getDelay(): Promise<number> {
 	return delay;
 }
 
+/** Whether checking is on for this page, asked for once and again after a setting changed. */
+let active: Promise<boolean> | null = null;
+
+function isActive(): Promise<boolean> {
+	if (active == null) {
+		const request = ProtocolClient.isActive(window.location.hostname);
+		request.catch(() => {
+			if (active === request) active = null;
+		});
+		active = request;
+	}
+	return active;
+}
+
+/** Run `action` if checking is on for this page. */
+function whenActive(action: () => void) {
+	isActive().then(
+		(on) => {
+			if (on && !stopped) action();
+		},
+		() => {},
+	);
+}
+
 // The options page stores the delay, and the next check in an open tab must use it.
 chrome.storage.onChanged.addListener((changes, areaName) => {
 	if (areaName === 'local' && 'delay' in changes) {
@@ -47,6 +71,7 @@ const fw = new LintFramework(
 		getActivationKey: () => ProtocolClient.getActivationKey(),
 		getHotkey: () => ProtocolClient.getHotkey(),
 		getDelay,
+		isActive,
 		openOptions: () => ProtocolClient.openOptions(),
 		addToUserDictionary: (words) => ProtocolClient.addToUserDictionary(words),
 		setRuleEnabled: async (ruleId, enabled) => {
@@ -57,10 +82,12 @@ const fw = new LintFramework(
 );
 
 // The background asks for this after a site, default or pause setting changed.
-// LintFramework re-checks every second; with the cache gone it asks the background again.
+// LintFramework re-checks every second; with the caches gone it asks the background again.
 chrome.runtime.onMessage.addListener((message: { kind?: string }) => {
 	if (message?.kind === 'refresh') {
 		ProtocolClient.clearCache();
+		active = null;
+		scan();
 	}
 });
 
@@ -100,7 +127,7 @@ let stopped = false;
 let keepAliveTimer: number | undefined;
 const keepAliveCallback = () => {
 	ProtocolClient.lint('', 'example.com', {});
-	void syncGoogleDocsBridge();
+	whenActive(syncGoogleDocsBridge);
 
 	// The request above can find the extension gone and shut down.
 	if (!stopped) {
@@ -145,7 +172,12 @@ function maybeAddTextareaTarget(element: HTMLTextAreaElement, requireVisible: bo
 	fw.addTarget(element);
 }
 
+/** Look for text fields to check, unless checking is off for this page. */
 function scan() {
+	whenActive(addTargets);
+}
+
+function addTargets() {
 	void syncGoogleDocsBridge();
 
 	if (isGoogleDocsPage()) {
@@ -283,7 +315,7 @@ function onFocusIn(event: FocusEvent) {
 		return;
 	}
 
-	maybeAddTextareaTarget(target, false);
+	whenActive(() => maybeAddTextareaTarget(target, false));
 }
 
 scan();

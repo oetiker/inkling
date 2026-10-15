@@ -34,9 +34,15 @@ export async function listenerTypes(
  * Playwright neither reports errors of that world nor reaches into it; the DevTools
  * protocol does both.
  */
-export async function pageWithMistake(context: BrowserContext, file: string, editor: string) {
+export async function pageWithMistake(
+	context: BrowserContext,
+	file: string,
+	editor: string,
+	settings: Record<string, unknown> = {},
+) {
 	await storageSet(context, {
 		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
+		...settings,
 	});
 	const page = await context.newPage();
 	const cdp = await context.newCDPSession(page);

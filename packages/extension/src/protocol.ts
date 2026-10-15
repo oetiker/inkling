@@ -27,7 +27,8 @@ export type Request =
 	| OpenOptionsRequest
 	| GetTabPausedRequest
 	| SetTabPausedRequest
-	| PageStartedRequest;
+	| PageStartedRequest
+	| GetActiveRequest;
 
 export type Response =
 	| LintResponse
@@ -43,6 +44,7 @@ export type Response =
 	| GetHotkeyResponse
 	| GetActivationKeyResponse
 	| GetTabPausedResponse
+	| GetActiveResponse
 	| ErrorResponse;
 
 export type LintRequest = {
@@ -55,6 +57,17 @@ export type LintRequest = {
 export type LintResponse = {
 	kind: 'lints';
 	lints: UnpackedLintGroups;
+};
+
+/** Whether text from `domain`, in the tab that sends it, gets checked now. */
+export type GetActiveRequest = {
+	kind: 'getActive';
+	domain: string;
+};
+
+export type GetActiveResponse = {
+	kind: 'getActive';
+	active: boolean;
 };
 
 /** How to reach the LanguageTool server. */

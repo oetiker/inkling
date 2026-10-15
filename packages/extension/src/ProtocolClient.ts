@@ -127,6 +127,11 @@ export default class ProtocolClient {
 		await ProtocolClient.send({ kind: 'setDelay', delay });
 	}
 
+	/** Whether text from `domain` in this tab gets checked now: site, default and pause. */
+	public static async isActive(domain: string): Promise<boolean> {
+		return (await ProtocolClient.send({ kind: 'getActive', domain })).active;
+	}
+
 	public static async getDomainEnabled(domain: string): Promise<boolean> {
 		this.lintCache.clear();
 		return (await ProtocolClient.send({ kind: 'getDomainStatus', domain })).enabled;

@@ -23,6 +23,8 @@ type FrameworkActions = {
 	getActivationKey?: () => Promise<ActivationKey>;
 	getHotkey?: () => Promise<Hotkey>;
 	getDelay?: () => Promise<number>;
+	/** Whether this page gets checked now; nothing reads target text while it does not. */
+	isActive?: () => Promise<boolean>;
 	openOptions?: () => Promise<void>;
 	addToUserDictionary?: (words: string[]) => Promise<void>;
 	setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
@@ -139,7 +141,15 @@ export default class LintFramework {
 
 	async requestLintUpdate(immediate = false): Promise<void> {
 		const delay = (await this.actions.getDelay?.()) ?? 0;
+		const active = (await this.actions.isActive?.()) ?? true;
 		if (this.stopped) {
+			return;
+		}
+		if (!active) {
+			if (this.lastLints.length > 0) {
+				this.lastLints = [];
+				this.requestRender();
+			}
 			return;
 		}
 		const remainingDelay = delay - (Date.now() - this.lastInputAt);

@@ -40,10 +40,15 @@ export function pauseEndedByStart(pausedAt: unknown, startedAt: number): boolean
 	return typeof pausedAt === 'number' && pausedAt <= startedAt;
 }
 
-/** Ends the pause of a tab if it was set before the document started at `startedAt`. */
-export async function endTabPauseAt(tabId: number, startedAt: number): Promise<void> {
+/**
+ * Ends the pause of a tab if it was set before the document started at `startedAt`.
+ * Returns whether it ended one.
+ */
+export async function endTabPauseAt(tabId: number, startedAt: number): Promise<boolean> {
 	const key = pauseKey(tabId);
 	if (pauseEndedByStart((await chrome.storage.session.get(key))[key], startedAt)) {
 		await chrome.storage.session.remove(key);
+		return true;
 	}
+	return false;
 }
