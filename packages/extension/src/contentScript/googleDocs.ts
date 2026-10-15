@@ -18,6 +18,8 @@ declare global {
 
 const GOOGLE_DOCS_TARGET_ID = 'inkling-google-docs-target';
 const GOOGLE_DOCS_MAIN_WORLD_BRIDGE_ID = 'inkling-google-docs-main-world-bridge';
+/** Tells the page script in google-docs-bridge.js to stop. */
+const GOOGLE_DOCS_STOP_EVENT = 'inkling:gdocs:stop';
 const GOOGLE_DOCS_EDITOR_SELECTOR = '.kix-appview-editor';
 const GOOGLE_DOCS_RECT_SELECTOR = 'rect[aria-label]';
 const GOOGLE_DOCS_SYNCING_ATTR = 'data-inkling-gdocs-syncing';
@@ -575,10 +577,13 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 		}
 	}
 
-	/** Stop syncing and remove the mirror of the document text. */
+	/** Stop syncing, stop the page script and remove the mirror of the document text. */
 	function dispose() {
 		disposed = true;
 		disposeBridgeClient();
+		if (injectedMainWorldBridge) {
+			document.dispatchEvent(new CustomEvent(GOOGLE_DOCS_STOP_EVENT));
+		}
 		document.getElementById(GOOGLE_DOCS_TARGET_ID)?.remove();
 	}
 

@@ -1,3 +1,4 @@
+- In Chrome, Google Docs tabs that were open while Inkling was reloaded, updated or turned off kept running a script of Inkling that read the document eight times a second. This script now stops with the rest of Inkling.
 - On sites where Inkling is turned off or paused, it no longer reads the text of each field while you type, which made typing slower on long texts.
 - On pages that keep replacing their text fields, such as web mail and chat apps, Inkling no longer keeps every field the page has removed in memory, so the tab no longer uses more memory the longer it stays open.
 - In Firefox, tabs that were open while Inkling was reloaded or updated kept the old marks frozen in place next to the new ones; the old marks now go away. When Inkling is turned off in Firefox, its marks still stay in open tabs until they are reloaded.

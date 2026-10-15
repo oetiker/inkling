@@ -29,6 +29,8 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 	const EVENT_LAYOUT_CHANGED = 'inkling:gdocs:layout-changed';
 	const EVENT_GET_RECTS = 'inkling:gdocs:get-rects';
 	const EVENT_REPLACE = 'inkling:gdocs:replace';
+	/** Sent by the content script when it shuts down; nothing is left running after it. */
+	const EVENT_STOP = 'inkling:gdocs:stop';
 	const CARET_DIRECTION_THRESHOLD = 20;
 	const CARET_CHOICE_STALE_MS = 1500;
 
@@ -41,6 +43,8 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 	let layoutScheduled = false;
 	let lastCaretChoice = /** @type {{ rect: Rect, position: number, at: number } | null} */ (null);
 	let textSyncInFlight = false;
+	/** Set by the stop event; work still in flight then adds nothing to the page. */
+	let stopped = false;
 
 	function ensureBridgeNode() {
 		if (bridgeNode instanceof HTMLElement) {
@@ -80,6 +84,9 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 		layoutScheduled = true;
 		queueMicrotask(() => {
 			layoutScheduled = false;
+			if (stopped) {
+				return;
+			}
 			layoutEpoch += 1;
 			const bridge = ensureBridgeNode();
 			bridge.setAttribute(LAYOUT_EPOCH_ATTR, String(layoutEpoch));
@@ -163,7 +170,7 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 			}
 
 			const annotated = await getAnnotatedText();
-			if (!annotated || typeof annotated.getText !== 'function') {
+			if (stopped || !annotated || typeof annotated.getText !== 'function') {
 				return;
 			}
 
@@ -724,7 +731,8 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 	});
 	requestHandler.start();
 
-	document.addEventListener(EVENT_GET_RECTS, (event) => {
+	/** @param {Event} event */
+	function onGetRects(event) {
 		const detail = /** @type {CustomEvent} */ (event).detail ?? {};
 		const requestId = String(detail.requestId ?? '');
 		if (!requestId) {
@@ -732,44 +740,56 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 		}
 
 		void handleGetRectsRequest(detail).then((response) => {
+			if (stopped) {
+				return;
+			}
 			ensureBridgeNode().setAttribute(
 				`data-inkling-rects-${requestId}`,
 				JSON.stringify(response.rects),
 			);
 		});
-	});
+	}
 
-	document.addEventListener(EVENT_REPLACE, (event) => {
+	/** @param {Event} event */
+	function onReplace(event) {
 		const detail = /** @type {CustomEvent} */ (event).detail ?? {};
 		void handleReplaceTextRequest(detail);
-	});
+	}
 
-	window.addEventListener(
-		'resize',
-		() => {
-			scheduleLayoutUpdate('resize');
-		},
-		{ passive: true },
-	);
-	window.addEventListener(
-		'scroll',
-		() => {
-			scheduleLayoutUpdate('scroll');
-		},
-		{ passive: true, capture: true },
-	);
-	document.addEventListener(
-		'wheel',
-		() => {
-			scheduleLayoutUpdate('wheel');
-		},
-		{ passive: true, capture: true },
-	);
+	const onResize = () => scheduleLayoutUpdate('resize');
+	const onScroll = () => scheduleLayoutUpdate('scroll');
+	const onWheel = () => scheduleLayoutUpdate('wheel');
+
+	document.addEventListener(EVENT_GET_RECTS, onGetRects);
+	document.addEventListener(EVENT_REPLACE, onReplace);
+	window.addEventListener('resize', onResize, { passive: true });
+	window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+	document.addEventListener('wheel', onWheel, { passive: true, capture: true });
 
 	void syncText();
 	bindLayoutObservers();
-	window.setInterval(() => {
+	const pollTimer = window.setInterval(() => {
 		void syncText();
 		bindLayoutObservers();
 	}, POLL_INTERVAL_MS);
+
+	document.addEventListener(
+		EVENT_STOP,
+		() => {
+			stopped = true;
+			window.clearInterval(pollTimer);
+			disconnectLayoutObservers();
+			requestHandler.stop();
+			document.removeEventListener(EVENT_GET_RECTS, onGetRects);
+			document.removeEventListener(EVENT_REPLACE, onReplace);
+			window.removeEventListener('resize', onResize);
+			window.removeEventListener('scroll', onScroll, { capture: true });
+			document.removeEventListener('wheel', onWheel, { capture: true });
+			delete window.__inklingGoogleDocsAnnotatedText;
+			// Without its node, a content script that starts later injects a fresh bridge.
+			document.getElementById(BRIDGE_ID)?.remove();
+			bridgeNode = null;
+		},
+		{ once: true },
+	);
 })();
