@@ -1,4 +1,5 @@
 import { mkdir, rm } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import path from 'node:path';
 import { type BrowserContext, test as base, expect } from '@playwright/test';
 import { withExtension } from 'playwright-webextext';
@@ -34,7 +35,13 @@ const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] 
 		const context = await browserType.launchPersistentContext(profile, {
 			...contextOptions,
 			...launchOptions,
-			args: [...(launchOptions.args ?? []), ...extraBrowserArgs],
+			args: [
+				...(launchOptions.args ?? []),
+				...extraBrowserArgs,
+				// Without a port of its own, every Firefox would try 6000 and the add-on could be
+				// installed into another worker's browser.
+				...(browserName === 'firefox' ? ['--start-debugger-server', String(await freePort())] : []),
+			],
 			headless,
 		});
 
@@ -51,6 +58,18 @@ const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] 
 		}
 	},
 });
+
+/** A TCP port no one listens on right now. */
+function freePort(): Promise<number> {
+	return new Promise((resolve, reject) => {
+		const server = createServer();
+		server.on('error', reject);
+		server.listen(0, '127.0.0.1', () => {
+			const { port } = server.address() as { port: number };
+			server.close(() => resolve(port));
+		});
+	});
+}
 
 async function closeInstallPage(context: BrowserContext): Promise<void> {
 	// The tab can show up as about:blank first, so look for the URL rather than the page event.
