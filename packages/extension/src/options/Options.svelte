@@ -24,6 +24,7 @@ let serverStatus: { ok: boolean; message: string } | null = $state(null);
 let serverBusy = $state(false);
 
 let loaded = $state(false);
+let loadError: string | null = $state(null);
 let defaultEnabled = $state(false);
 let delayText = $state('');
 let delayError = $state(false);
@@ -41,17 +42,22 @@ Promise.all([
 	ProtocolClient.getHotkey(),
 	ProtocolClient.getUserDictionary(),
 	ProtocolClient.getDisabledRules(),
-]).then(([server, enabled, delay, key, hk, dict, rules]) => {
-	serverUrl = server.serverUrl;
-	preferredVariants = server.preferredVariants;
-	defaultEnabled = enabled;
-	delayText = String(delay);
-	activationKey = key;
-	hotkey = { modifiers: [...hk.modifiers], key: hk.key };
-	userDict = listToString(dict.toSorted());
-	disabledRules = listToString(rules);
-	loaded = true;
-});
+])
+	.then(([server, enabled, delay, key, hk, dict, rules]) => {
+		serverUrl = server.serverUrl;
+		preferredVariants = server.preferredVariants;
+		defaultEnabled = enabled;
+		delayText = String(delay);
+		activationKey = key;
+		hotkey = { modifiers: [...hk.modifiers], key: hk.key };
+		userDict = listToString(dict.toSorted());
+		disabledRules = listToString(rules);
+		loaded = true;
+	})
+	.catch((e) => {
+		// Leave `loaded` false so the dictionary and rules effects never save the defaults.
+		loadError = e instanceof Error ? e.message : String(e);
+	});
 
 /** Converts the content of a text area to a list with one entry per line. */
 function stringToList(s: string): string[] {
@@ -112,10 +118,12 @@ async function saveServer() {
 	}
 }
 
+const MAX_DELAY_MS = 60000;
+
 function onDelayInput(raw: string) {
 	delayText = raw;
 	const value = raw.trim();
-	const ok = /^\d+$/.test(value);
+	const ok = /^\d+$/.test(value) && Number(value) <= MAX_DELAY_MS;
 	delayError = !ok;
 	if (ok) {
 		ProtocolClient.setDelay(Number(value));
@@ -176,7 +184,7 @@ async function exportEnabledDomainsJSON() {
 
 {#snippet row(id: string, label: string, help: string)}
   <div class="flex flex-col gap-1">
-    <Label for={id}>{label}</Label>
+    <Label id="{id}-label" for={id}>{label}</Label>
     <p class="text-muted-foreground text-sm">{help}</p>
   </div>
 {/snippet}
@@ -184,6 +192,12 @@ async function exportEnabledDomainsJSON() {
 <main class="bg-background text-foreground min-h-screen px-4 py-10">
   <div class="mx-auto flex max-w-2xl flex-col gap-6">
     <PageHeader subtitle="Settings" />
+
+    {#if loadError != null}
+      <Alert.Root variant="destructive">
+        <Alert.Description>Could not load the settings: {loadError}</Alert.Description>
+      </Alert.Root>
+    {/if}
 
     <Card.Root>
       <Card.Header><Card.Title>Server</Card.Title></Card.Header>
@@ -221,7 +235,7 @@ async function exportEnabledDomainsJSON() {
           <div class="flex flex-col gap-1">
             <Input id="delay" type="text" inputmode="numeric" value={delayText} oninput={(e) => onDelayInput(e.currentTarget.value)} aria-invalid={delayError} aria-describedby={delayError ? 'delay-error' : undefined} />
             {#if delayError}
-              <p id="delay-error" class="text-destructive text-sm">Enter a whole number of milliseconds, 0 or more.</p>
+              <p id="delay-error" class="text-destructive text-sm">Enter a whole number of milliseconds between 0 and 60000.</p>
             {/if}
           </div>
         </div>

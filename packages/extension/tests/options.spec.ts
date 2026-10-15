@@ -35,7 +35,8 @@ test('Fresh profile shows defaults', async ({ context }) => {
 	await expect(page.getByLabel('Delay')).toHaveValue('500');
 	await expect(page.getByRole('switch', { name: 'Enable on new sites' })).not.toBeChecked();
 	await expect(page.getByLabel('User dictionary')).toHaveValue('');
-	await expect(page.getByLabel('Server URL')).not.toHaveValue(/undefined/);
+	// The Chromium test build ships without a default server.
+	await expect(page.getByLabel('Server URL')).toHaveValue('');
 });
 
 test('Settings survive a reload', async ({ context }) => {
@@ -58,20 +59,32 @@ test('Invalid delay is rejected', async ({ context }) => {
 	const delay = page.getByLabel('Delay');
 	await expect(delay).toHaveValue('650');
 
-	for (const bad of ['', '-5']) {
+	const message = page.getByText('Enter a whole number of milliseconds between 0 and 60000.');
+	for (const bad of ['', '-5', '99999999', '60001']) {
 		await delay.fill(bad);
 		await expect(delay).toHaveAttribute('aria-invalid', 'true');
-		await expect(page.getByText('Enter a whole number of milliseconds, 0 or more.')).toBeVisible();
+		await expect(message).toBeVisible();
 	}
 	expect(await storageGet(context, 'delay')).toBe(650);
+
+	await delay.fill('60000');
+	await expect(delay).toHaveAttribute('aria-invalid', 'false');
+	await expect(message).toHaveCount(0);
+	await expect.poll(() => storageGet(context, 'delay')).toBe(60000);
 });
 
 test('Hotkey can be recorded and recording can be cancelled', async ({ context }) => {
 	const page = await openOptions(context);
-	// The <Label> names the button, so find it by id and check its text.
 	const recorder = page.locator('#hotkey');
+	// The button is named by its label and its current text.
+	await expect(
+		page.getByRole('button', { name: /Apply-suggestion hotkey.*Change hotkey/ }),
+	).toBeVisible();
 	await recorder.click();
 	await expect(recorder).toHaveText('Press keys…');
+	await expect(
+		page.getByRole('button', { name: /Apply-suggestion hotkey.*Press keys/ }),
+	).toBeVisible();
 	await page.keyboard.press('Control+Shift+K');
 	await expect
 		.poll(() => storageGet(context, 'hotkey'))
@@ -82,6 +95,17 @@ test('Hotkey can be recorded and recording can be cancelled', async ({ context }
 	await expect(recorder).toHaveText('Change hotkey');
 	await page.keyboard.press('Control+Alt+J');
 	expect(await storageGet(context, 'hotkey')).toEqual({ modifiers: ['Ctrl', 'Shift'], key: 'K' });
+});
+
+test('Activation key can be chosen and survives a reload', async ({ context }) => {
+	const page = await openOptions(context);
+	await page.locator('#activation-key').click();
+	await page.getByRole('option', { name: 'Double Control' }).click();
+	await expect(page.locator('#activation-key')).toHaveText('Double Control');
+	await expect.poll(() => storageGet(context, 'activationKey')).toBe('control');
+
+	await page.reload();
+	await expect(page.locator('#activation-key')).toHaveText('Double Control');
 });
 
 test('Options page shows the logo and version', async ({ context }) => {

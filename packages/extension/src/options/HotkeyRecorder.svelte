@@ -49,7 +49,13 @@ onDestroy(stop);
       <Kbd>{part}</Kbd>
     {/each}
   </span>
-  <Button {id} variant="outline" size="sm" onclick={recording ? stop : start}>
-    {recording ? 'Press keys…' : 'Change hotkey'}
+  <Button
+    {id}
+    variant="outline"
+    size="sm"
+    aria-labelledby={id ? `${id}-label ${id}-text` : undefined}
+    onclick={recording ? stop : start}
+  >
+    <span id={id ? `${id}-text` : undefined}>{recording ? 'Press keys…' : 'Change hotkey'}</span>
   </Button>
 </div>
