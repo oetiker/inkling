@@ -133,7 +133,6 @@ export default class ProtocolClient {
 	}
 
 	public static async getDomainEnabled(domain: string): Promise<boolean> {
-		this.lintCache.clear();
 		return (await ProtocolClient.send({ kind: 'getDomainStatus', domain })).enabled;
 	}
 
@@ -155,7 +154,6 @@ export default class ProtocolClient {
 	}
 
 	public static async getDefaultEnabled(): Promise<boolean> {
-		this.lintCache.clear();
 		return (await ProtocolClient.send({ kind: 'getDefaultStatus' })).enabled;
 	}
 
