@@ -25,7 +25,7 @@ import {
 	isGoogleDocsSourceSyncing,
 } from './googleDocsAdapter';
 import { type LintKind, lintKindFill } from './lintKindColor';
-import RenderBox from './RenderBox';
+import RenderBox, { RENDER_BOX_TAG } from './RenderBox';
 import type SourceElement from './SourceElement';
 import type { UnpackedLint } from './unpackLint';
 
@@ -342,6 +342,32 @@ function isContainingBlock(el: Element): boolean {
 	}
 
 	return false;
+}
+
+/**
+ * Remove the marks, CSS highlights and suggestion card that an earlier instance left in
+ * this page. Firefox discards a content script when its extension is reloaded, updated
+ * or turned off, without letting it clean up; the next instance finds its elements.
+ */
+export function removeLeftoverMarks() {
+	for (const host of document.querySelectorAll(RENDER_BOX_TAG)) {
+		host.remove();
+	}
+	for (const style of document.querySelectorAll('style[id^="inkling-highlight-style-"]')) {
+		style.remove();
+	}
+	try {
+		// Not keys(): a Firefox content script cannot iterate the page's registry.
+		const names: string[] = [];
+		CSS.highlights?.forEach((_, name) => {
+			if (name.startsWith('inkling-')) names.push(name);
+		});
+		for (const name of names) {
+			CSS.highlights.delete(name);
+		}
+	} catch {
+		// Leftover highlights are a blemish; failing here would keep Inkling from starting.
+	}
 }
 
 export function supportsCustomHighlights() {

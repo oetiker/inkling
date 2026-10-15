@@ -2,7 +2,7 @@ export * from './lint/Box';
 export { default as computeLintBoxes } from './lint/computeLintBoxes/index';
 export * from './lint/domUtils';
 export * from './lint/editorUtils';
-export { default as Highlights } from './lint/Highlights';
+export { default as Highlights, removeLeftoverMarks } from './lint/Highlights';
 export { default as LintFramework } from './lint/LintFramework';
 export * from './lint/lintKindColor';
 export { default as PopupHandler } from './lint/PopupHandler';

@@ -1,5 +1,11 @@
 import '@webcomponents/custom-elements';
-import { getClosestBlockAncestor, isVisible, LintFramework, leafNodes } from 'lint-framework';
+import {
+	getClosestBlockAncestor,
+	isVisible,
+	LintFramework,
+	leafNodes,
+	removeLeftoverMarks,
+} from 'lint-framework';
 import isSubstack from '../isSubstack';
 import isWordPress from '../isWordPress';
 import ProtocolClient from '../ProtocolClient';
@@ -9,6 +15,9 @@ import { pageStartTime } from './pageStart';
 if (isWordPress() || isSubstack()) {
 	ProtocolClient.setDomainEnabled(window.location.hostname, true, false);
 }
+
+// Firefox keeps the marks of the instance that ran before an extension reload or update.
+removeLeftoverMarks();
 
 /** The check delay, asked for once and again after the setting changed. */
 let delay: Promise<number> | null = null;

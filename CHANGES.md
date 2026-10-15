@@ -1,3 +1,4 @@
+- In Firefox, tabs that were open while Inkling was reloaded or updated kept the old marks frozen in place next to the new ones; the old marks now go away. When Inkling is turned off in Firefox, its marks still stay in open tabs until they are reloaded.
 - In Chrome, tabs that were open while Inkling was reloaded, updated or turned off kept showing the old marks and filled the page's console with "Extension context invalidated" errors. These tabs now drop the marks and the suggestion card within half a second and log nothing.
 - The settings page links to the source code and bug reports at github.com/oetiker/inkling.
 - The suggestion card appears at once instead of fading in, which looked odd because it faded in again while you edited the text.
