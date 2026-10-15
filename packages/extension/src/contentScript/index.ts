@@ -4,6 +4,7 @@ import isSubstack from '../isSubstack';
 import isWordPress from '../isWordPress';
 import ProtocolClient from '../ProtocolClient';
 import { createGoogleDocsBridgeSync, isGoogleDocsPage } from './googleDocs';
+import { pageStartTime } from './pageStart';
 
 if (isWordPress() || isSubstack()) {
 	ProtocolClient.setDomainEnabled(window.location.hostname, true, false);
@@ -46,7 +47,12 @@ if (window === window.top) {
 			},
 		);
 	} else {
-		void ProtocolClient.pageStarted(Date.now() - performance.now());
+		const navigation = performance.getEntriesByType('navigation')[0] as
+			| (PerformanceNavigationTiming & { activationStart?: number })
+			| undefined;
+		void ProtocolClient.pageStarted(
+			pageStartTime(Date.now(), performance.now(), navigation?.activationStart ?? 0),
+		);
 	}
 	window.addEventListener('pageshow', (event) => {
 		if (event.persisted) {
