@@ -25,6 +25,7 @@ let serverBusy = $state(false);
 
 let loaded = $state(false);
 let loadError: string | null = $state(null);
+let saveError: string | null = $state(null);
 let defaultEnabled = $state(false);
 let delayText = $state('');
 let delayError = $state(false);
@@ -58,6 +59,18 @@ Promise.all([
 		// Leave `loaded` false so the dictionary and rules effects never save the defaults.
 		loadError = e instanceof Error ? e.message : String(e);
 	});
+
+/** Runs a save and shows its failure; a later successful save hides the message again. */
+async function save(promise: Promise<unknown>): Promise<boolean> {
+	try {
+		await promise;
+		saveError = null;
+		return true;
+	} catch (e) {
+		saveError = e instanceof Error ? e.message : String(e);
+		return false;
+	}
+}
 
 /** Converts the content of a text area to a list with one entry per line. */
 function stringToList(s: string): string[] {
@@ -113,6 +126,11 @@ async function saveServer() {
 			trimmed.length > 0
 				? await ProtocolClient.testServer(trimmed)
 				: { ok: true, message: 'Checking is off until you set a server.' };
+	} catch (e) {
+		serverStatus = {
+			ok: false,
+			message: `Could not save: ${e instanceof Error ? e.message : String(e)}`,
+		};
 	} finally {
 		serverBusy = false;
 	}
@@ -126,40 +144,41 @@ function onDelayInput(raw: string) {
 	const ok = /^\d+$/.test(value) && Number(value) <= MAX_DELAY_MS;
 	delayError = !ok;
 	if (ok) {
-		ProtocolClient.setDelay(Number(value));
+		void save(ProtocolClient.setDelay(Number(value)));
 	}
 }
 
 function onDefaultEnabledChange(checked: boolean) {
 	defaultEnabled = checked;
-	ProtocolClient.setDefaultEnabled(checked);
+	void save(ProtocolClient.setDefaultEnabled(checked));
 }
 
 function onActivationKeyChange(value: string) {
 	activationKey = value as ActivationKey;
-	ProtocolClient.setActivationKey(activationKey);
+	void save(ProtocolClient.setActivationKey(activationKey));
 }
 
 function onHotkeyChange(next: Hotkey) {
 	hotkey = next;
-	ProtocolClient.setHotkey(next);
+	void save(ProtocolClient.setHotkey(next));
 }
 
 $effect(() => {
 	if (loaded) {
-		ProtocolClient.setUserDictionary(stringToList(userDict));
+		void save(ProtocolClient.setUserDictionary(stringToList(userDict)));
 	}
 });
 
 $effect(() => {
 	if (loaded) {
-		ProtocolClient.setDisabledRules(stringToList(disabledRules));
+		void save(ProtocolClient.setDisabledRules(stringToList(disabledRules)));
 	}
 });
 
 async function clearIgnored() {
-	await ProtocolClient.clearIgnoredLints();
-	ignoredCleared = true;
+	if (await save(ProtocolClient.clearIgnoredLints())) {
+		ignoredCleared = true;
+	}
 }
 
 async function exportEnabledDomainsJSON() {
@@ -192,6 +211,12 @@ async function exportEnabledDomainsJSON() {
 <main class="bg-background text-foreground min-h-screen px-4 py-10">
   <div class="mx-auto flex max-w-2xl flex-col gap-6">
     <PageHeader subtitle="Settings" />
+
+    {#if saveError != null}
+      <Alert.Root variant="destructive">
+        <Alert.Description>Could not save: {saveError}</Alert.Description>
+      </Alert.Root>
+    {/if}
 
     {#if loadError != null}
       <Alert.Root variant="destructive">
