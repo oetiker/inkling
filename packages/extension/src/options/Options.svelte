@@ -320,5 +320,10 @@ async function exportEnabledDomainsJSON() {
         </div>
       </Card.Content>
     </Card.Root>
+
+    <footer class="text-muted-foreground text-center text-sm">
+      Source code and bug reports:
+      <a class="text-foreground underline underline-offset-4" href="https://github.com/oetiker/inkling" target="_blank" rel="noreferrer">github.com/oetiker/inkling</a>
+    </footer>
   </div>
 </main>

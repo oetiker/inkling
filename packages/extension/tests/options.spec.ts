@@ -144,3 +144,11 @@ test('Options page shows the logo and version', async ({ context }) => {
 	await expect(page.getByText(/^v\d+\.\d+\.\d+$/)).toBeVisible();
 	expect(await extensionId(context)).toMatch(/^[a-p]{32}$/);
 });
+
+test('Options page links to the source code', async ({ context }) => {
+	const page = await openOptions(context);
+	await expect(page.getByRole('link', { name: 'github.com/oetiker/inkling' })).toHaveAttribute(
+		'href',
+		'https://github.com/oetiker/inkling',
+	);
+});

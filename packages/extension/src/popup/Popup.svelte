@@ -49,3 +49,12 @@ function openSettings() {
     <Button variant="ghost" size="sm" onclick={openSettings}><Settings2 />Settings</Button>
   </div>
 </main>
+
+<style>
+  /* Chrome shows the popup without a frame; Firefox draws its own around it. */
+  @supports not (-moz-appearance: none) {
+    main {
+      border: 1px solid var(--border);
+    }
+  }
+</style>

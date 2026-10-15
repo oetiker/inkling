@@ -267,9 +267,6 @@ const STYLE = `
 .inkling-close { width:22px; height:22px; margin:-4px -2px 0 0; }
 .inkling-close svg { width:15px; height:15px; }
 .inkling-popup button:focus-visible { outline:2px solid #0969da; outline-offset:-2px; }
-.inkling-fade-in { animation:inklingFadeIn 100ms ease-out; }
-@keyframes inklingFadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
-@media (prefers-reduced-motion:reduce) { .inkling-fade-in { animation:none; } }
 @media (prefers-color-scheme:dark) {
  .inkling-popup { background:#161b22; color:#e6edf3; border-color:#30363d; box-shadow:0 6px 20px rgba(1,4,9,0.7); }
  .inkling-head, .inkling-icon { color:#8b949e; }
@@ -385,7 +382,7 @@ export default function SuggestionBox(props: SuggestionBoxProps) {
 		'div',
 		{
 			key: 'inkling-popup',
-			className: 'inkling-popup inkling-fade-in',
+			className: 'inkling-popup',
 			onkeydown: onKeyDown,
 			attributes: { role: 'dialog', 'aria-labelledby': 'inkling-kind' },
 			'inkling-popup-hook': popupHook(props, refocusClose),
