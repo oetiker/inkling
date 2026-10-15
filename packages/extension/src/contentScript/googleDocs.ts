@@ -54,6 +54,7 @@ export function isGoogleDocsPage(): boolean {
 
 export function createGoogleDocsBridgeSync(fw: LintFramework): {
 	sync: () => Promise<void>;
+	stop: () => void;
 	dispose: () => void;
 } {
 	let bridgeClient: GoogleDocsBridgeClient | null = null;
@@ -103,7 +104,8 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 
 		const script = document.createElement('script');
 		script.type = 'module';
-		script.src = chrome.runtime.getURL('google-docs-bridge.js');
+		// A page runs a module once per URL; a bridge started again after a stop needs a new one.
+		script.src = chrome.runtime.getURL(`google-docs-bridge.js?run=${Date.now()}`);
 		script.onload = () => script.remove();
 		(document.head || document.documentElement).appendChild(script);
 		injectedMainWorldBridge = true;
@@ -577,15 +579,22 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 		}
 	}
 
-	/** Stop syncing, stop the page script and remove the mirror of the document text. */
-	function dispose() {
-		disposed = true;
+	/** Stop the page script and remove the mirror of the document text. The next sync starts over. */
+	function stop() {
 		disposeBridgeClient();
 		if (injectedMainWorldBridge) {
 			document.dispatchEvent(new CustomEvent(GOOGLE_DOCS_STOP_EVENT));
+			injectedMainWorldBridge = false;
 		}
 		document.getElementById(GOOGLE_DOCS_TARGET_ID)?.remove();
+		lastCloneSignature = '';
 	}
 
-	return { sync: syncGoogleDocsBridge, dispose };
+	/** Stop for good. */
+	function dispose() {
+		disposed = true;
+		stop();
+	}
+
+	return { sync: syncGoogleDocsBridge, stop, dispose };
 }

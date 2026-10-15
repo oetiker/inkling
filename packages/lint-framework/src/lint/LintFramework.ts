@@ -303,6 +303,16 @@ export default class LintFramework {
 		}
 	}
 
+	/** Forget every target with its listeners and marks; a later `addTarget` starts over. */
+	public removeAllTargets() {
+		for (const target of this.targets) {
+			this.detachTargetListeners(target);
+		}
+		this.targets.clear();
+		this.lastLints = [];
+		this.requestRender();
+	}
+
 	/**
 	 * Stop for good: remove every listener, observer, timer and mark this framework added,
 	 * leaving the page as it was before. Used once the extension that runs it is gone.
@@ -325,12 +335,7 @@ export default class LintFramework {
 		if (this.hotkeyListener != null) {
 			document.removeEventListener('keydown', this.hotkeyListener, { capture: true });
 		}
-		for (const target of this.targets) {
-			this.detachTargetListeners(target);
-		}
-		this.targets.clear();
-
-		this.lastLints = [];
+		this.removeAllTargets();
 		this.lastBoxes = [];
 		this.lastLintBoxes = [];
 		this.popupHandler.dispose();

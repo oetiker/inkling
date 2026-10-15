@@ -1,3 +1,4 @@
+import type { BrowserContext } from '@playwright/test';
 import { evaluate, listenerTypes, pageWithMistake } from './contentScriptWorld';
 import { openOptions } from './extensionPages';
 import { expect, test } from './fixtures';
@@ -56,16 +57,43 @@ test('A site turned off reads no text, and checks again once turned on', async (
 	expect(await evaluate(cdp, contentScript, 'window.innerTextReads')).toBe(0);
 	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
 
-	const options = await openOptions(context);
-	await options.evaluate(() =>
-		chrome.runtime.sendMessage({
-			kind: 'setDomainStatus',
-			domain: 'localhost',
-			enabled: true,
-			overrideValue: true,
-		}),
-	);
-	await options.close();
+	await setLocalhostEnabled(context, true);
 	await expect(page.locator('#inkling-highlight').first()).toBeVisible({ timeout: 10000 });
 	expect(errors).toEqual([]);
 });
+
+test('Turning a site off releases its text fields', async ({ context }) => {
+	const { page, cdp, errors, contentScript } = await pageWithMistake(
+		context,
+		'simple_textarea.html',
+		'textarea',
+	);
+	await expect(page.locator('#inkling-highlight').first()).toBeVisible({ timeout: 30000 });
+	const field = 'document.querySelector("textarea")';
+	expect(await listenerTypes(cdp, contentScript, field)).toContain('input');
+
+	await setLocalhostEnabled(context, false);
+	await expect.poll(() => listenerTypes(cdp, contentScript, field), { timeout: 10000 }).toEqual([]);
+	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
+
+	await setLocalhostEnabled(context, true);
+	await expect(page.locator('#inkling-highlight').first()).toBeVisible({ timeout: 10000 });
+	expect(await listenerTypes(cdp, contentScript, field)).toContain('input');
+	expect(errors).toEqual([]);
+});
+
+/** Switch checking for localhost the way the popup does, so open tabs get told. */
+async function setLocalhostEnabled(context: BrowserContext, enabled: boolean) {
+	const options = await openOptions(context);
+	await options.evaluate(
+		(enabled) =>
+			chrome.runtime.sendMessage({
+				kind: 'setDomainStatus',
+				domain: 'localhost',
+				enabled,
+				overrideValue: true,
+			}),
+		enabled,
+	);
+	await options.close();
+}

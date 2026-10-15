@@ -6,7 +6,10 @@ test.skip(
 	'The test loads the script from a chrome-extension:// address',
 );
 
-test('The Google Docs page script stops when told to', async ({ context, page }) => {
+test('The Google Docs page script stops when told to and can start again', async ({
+	context,
+	page,
+}) => {
 	await page.goto('http://localhost:18081/simple_contenteditable.html');
 	const id = await extensionId(context);
 	// The script polls for the editor; count its lookups.
@@ -32,4 +35,13 @@ test('The Google Docs page script stops when told to', async ({ context, page })
 	await page.waitForTimeout(500);
 	expect(await lookups()).toBe(atStop);
 	await expect(page.locator('#inkling-google-docs-main-world-bridge')).toHaveCount(0);
+
+	// Turning the site on again loads the script once more, under a new URL.
+	await page.evaluate((url) => {
+		const script = document.createElement('script');
+		script.type = 'module';
+		script.src = url;
+		document.head.appendChild(script);
+	}, `chrome-extension://${id}/google-docs-bridge.js?run=2`);
+	await expect.poll(lookups).toBeGreaterThan(atStop + 2);
 });

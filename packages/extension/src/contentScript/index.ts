@@ -87,7 +87,7 @@ chrome.runtime.onMessage.addListener((message: { kind?: string }) => {
 	if (message?.kind === 'refresh') {
 		ProtocolClient.clearCache();
 		active = null;
-		scan();
+		applyActive();
 	}
 });
 
@@ -175,6 +175,22 @@ function maybeAddTextareaTarget(element: HTMLTextAreaElement, requireVisible: bo
 /** Look for text fields to check, unless checking is off for this page. */
 function scan() {
 	whenActive(addTargets);
+}
+
+/** Look for text fields if checking is on, or let go of all of them if it is off. */
+function applyActive() {
+	isActive().then(
+		(on) => {
+			if (stopped) return;
+			if (on) {
+				addTargets();
+			} else {
+				googleDocsBridge.stop();
+				fw.removeAllTargets();
+			}
+		},
+		() => {},
+	);
 }
 
 function addTargets() {

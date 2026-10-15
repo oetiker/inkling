@@ -1,3 +1,4 @@
+- Turning a site off in the popup now also makes Inkling let go of the text fields it was watching on open pages of that site, and in Google Docs it stops reading the document. Before, this only ended when the tab was reloaded.
 - In Chrome, Google Docs tabs that were open while Inkling was reloaded, updated or turned off kept running a script of Inkling that read the document eight times a second. This script now stops with the rest of Inkling.
 - On sites where Inkling is turned off or paused, it no longer reads the text of each field while you type, which made typing slower on long texts.
 - On pages that keep replacing their text fields, such as web mail and chat apps, Inkling no longer keeps every field the page has removed in memory, so the tab no longer uses more memory the longer it stays open.
