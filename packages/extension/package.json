@@ -54,7 +54,6 @@
 		"vite": "^5.4.21"
 	},
 	"dependencies": {
-		"@webcomponents/custom-elements": "^1.6.0",
 		"lint-framework": "workspace:*",
 		"lru-cache": "^11.5.3"
 	}

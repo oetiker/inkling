@@ -1,4 +1,3 @@
-import '@webcomponents/custom-elements';
 import {
 	getClosestBlockAncestor,
 	isVisible,
