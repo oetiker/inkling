@@ -46,7 +46,12 @@ export default class LintFramework {
 	private highlights: Highlights;
 	private popupHandler: PopupHandler;
 	private targets: Set<Node>;
-	private scrollableAncestors: Set<HTMLElement>;
+	/** The mutation observer watching each target. */
+	private targetObservers: Map<Node, MutationObserver> = new Map();
+	/** The scrollable ancestors that got a scroll listener for each target. */
+	private targetScrollAncestors: Map<Node, HTMLElement[]> = new Map();
+	/** How many targets need the scroll listener on each scrollable ancestor. */
+	private scrollableAncestors: Map<HTMLElement, number>;
 	private lintRequest: Promise<unknown> | null = null;
 	private renderRequested = false;
 	private lintDelayTimer: number | null = null;
@@ -85,7 +90,7 @@ export default class LintFramework {
 			setRuleEnabled: actions.setRuleEnabled,
 		});
 		this.targets = new Set();
-		this.scrollableAncestors = new Set();
+		this.scrollableAncestors = new Map();
 		this.lastLints = [];
 
 		this.updateEventCallback = () => {
@@ -165,6 +170,7 @@ export default class LintFramework {
 				this.onScreenTargets().map(async (target) => {
 					if (!document.contains(target)) {
 						this.targets.delete(target);
+						this.detachTargetListeners(target);
 						return { target: null as HTMLElement | null, lints: {} };
 					}
 
@@ -265,7 +271,7 @@ export default class LintFramework {
 		}
 	}
 
-	public async removeTarget(target: HTMLElement) {
+	public async removeTarget(target: Node) {
 		if (this.targets.has(target)) {
 			this.targets.delete(target);
 			this.update();
@@ -293,24 +299,42 @@ export default class LintFramework {
 		} else {
 			observer.observe(target as Element, config);
 		}
+		this.targetObservers.set(target, observer);
 
-		const scrollableAncestors = getScrollableAncestors(target);
+		const scrollableAncestors = getScrollableAncestors(target) as HTMLElement[];
+		this.targetScrollAncestors.set(target, scrollableAncestors);
 
 		for (const el of scrollableAncestors) {
-			if (!this.scrollableAncestors.has(el as HTMLElement)) {
-				this.scrollableAncestors.add(el as HTMLElement);
-				(el as HTMLElement).addEventListener('scroll', this.updateEventCallback, {
+			const users = this.scrollableAncestors.get(el) ?? 0;
+			if (users === 0) {
+				el.addEventListener('scroll', this.updateEventCallback, {
 					capture: true,
 					passive: true,
 				});
 			}
+			this.scrollableAncestors.set(el, users + 1);
 		}
 	}
 
-	private detachTargetListeners(target: HTMLElement) {
+	private detachTargetListeners(target: Node) {
 		for (const event of INPUT_EVENTS) {
 			target.removeEventListener(event, this.updateEventCallback);
 		}
+
+		this.targetObservers.get(target)?.disconnect();
+		this.targetObservers.delete(target);
+
+		// The ancestors recorded at attach time, since a detached target has none left.
+		for (const el of this.targetScrollAncestors.get(target) ?? []) {
+			const users = (this.scrollableAncestors.get(el) ?? 0) - 1;
+			if (users > 0) {
+				this.scrollableAncestors.set(el, users);
+			} else {
+				this.scrollableAncestors.delete(el);
+				el.removeEventListener('scroll', this.updateEventCallback, { capture: true });
+			}
+		}
+		this.targetScrollAncestors.delete(target);
 	}
 
 	private attachWindowListeners() {
