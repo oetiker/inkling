@@ -191,6 +191,14 @@ test('Popup cannot act on about:blank', async ({ context }) => {
 	const popup = await openPopupFor(context, id);
 	await expect(popup.getByText('Inkling cannot check this page')).toBeVisible();
 	await expect(popup.getByRole('switch', { name: 'Check this site' })).toBeDisabled();
+	await expect(popup.getByRole('button', { name: 'Pause in this tab' })).toBeDisabled();
+});
+
+test('Popup shows the cannot-check state when the tab cannot be read', async ({ context }) => {
+	await setupServer(context);
+	const popup = await openPopupFor(context, 999999);
+	await expect(popup.getByText('Inkling cannot check this page')).toBeVisible();
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toBeDisabled();
 });
 
 test('Popup shows the logo and opens the settings', async ({ context }) => {

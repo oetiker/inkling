@@ -14,32 +14,55 @@ const shownHost = $derived(host?.replace(/^www\./, ''));
 
 let enabled = $state(false);
 let paused = $state(false);
+// Set once the user acted, so a slow initial read cannot overwrite the choice.
+let enabledTouched = false;
+let pausedTouched = false;
 
 $effect(() => {
 	if (host != null && tab != null) {
 		ProtocolClient.getDomainEnabled(host).then((e) => {
-			enabled = e;
+			if (!enabledTouched) enabled = e;
 		});
 		ProtocolClient.getTabPaused(tab.id).then((p) => {
-			paused = p;
+			if (!pausedTouched) paused = p;
 		});
 	}
 });
 
 async function onSiteChange(checked: boolean) {
 	if (host == null || tab == null) return;
+	const wasEnabled = enabled;
+	const wasPaused = paused;
+	enabledTouched = true;
 	enabled = checked;
-	await ProtocolClient.setDomainEnabled(host, checked);
-	if (!checked && paused) {
+	try {
+		await ProtocolClient.setDomainEnabled(host, checked);
+	} catch {
+		enabled = wasEnabled;
+		return;
+	}
+	if (!checked) {
+		// Always sent: the pause may exist although the initial read has not shown it yet.
+		pausedTouched = true;
 		paused = false;
-		await ProtocolClient.setTabPaused(tab.id, false);
+		try {
+			await ProtocolClient.setTabPaused(tab.id, false);
+		} catch {
+			paused = wasPaused;
+		}
 	}
 }
 
 async function togglePause() {
 	if (tab == null) return;
-	paused = !paused;
-	await ProtocolClient.setTabPaused(tab.id, paused);
+	const before = paused;
+	pausedTouched = true;
+	paused = !before;
+	try {
+		await ProtocolClient.setTabPaused(tab.id, paused);
+	} catch {
+		paused = before;
+	}
 }
 
 const status = $derived(
@@ -48,9 +71,12 @@ const status = $derived(
 </script>
 
 {#if host == null}
-  <div class="flex items-center justify-between gap-3">
-    <p class="text-muted-foreground text-sm">Inkling cannot check this page</p>
-    <Switch aria-label="Check this site" disabled checked={false} />
+  <div class="flex flex-col gap-3">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-muted-foreground text-sm">Inkling cannot check this page</p>
+      <Switch aria-label="Check this site" disabled checked={false} />
+    </div>
+    <Button variant="outline" size="sm" disabled><Pause />Pause in this tab</Button>
   </div>
 {:else}
   <div class="flex flex-col gap-3">

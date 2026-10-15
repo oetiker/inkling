@@ -12,10 +12,13 @@ let tab: PopupTab | undefined = $state();
 let tabLoaded = $state(false);
 let serverConfigured: boolean | null = $state(null);
 
-currentTab().then((t) => {
-	tab = t;
-	tabLoaded = true;
-});
+// A tab that cannot be read counts as unknown, which shows the cannot-check state.
+currentTab()
+	.catch(() => undefined)
+	.then((t) => {
+		tab = t;
+		tabLoaded = true;
+	});
 
 ProtocolClient.getServerSettings().then((s) => {
 	serverConfigured = s.serverUrl.length > 0;
