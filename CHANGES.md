@@ -1,3 +1,4 @@
+- In Chrome, tabs that were open while Inkling was reloaded, updated or turned off kept showing the old marks and filled the page's console with "Extension context invalidated" errors. These tabs now drop the marks and the suggestion card within half a second and log nothing.
 - The settings page links to the source code and bug reports at github.com/oetiker/inkling.
 - The suggestion card appears at once instead of fading in, which looked odd because it faded in again while you edited the text.
 - In Chrome, the popup now has a light grey border instead of showing as a white rectangle without an edge.

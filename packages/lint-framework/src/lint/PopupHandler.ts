@@ -35,6 +35,7 @@ export default class PopupHandler {
 	private renderBox: RenderBox;
 	private pointerDownCallback: (e: PointerEvent) => void;
 	private activationKeyListener: (() => void) | undefined;
+	private disposed = false;
 	private readonly actions: SuggestionBoxActions & {
 		getActivationKey?: () => Promise<ActivationKey>;
 	};
@@ -62,7 +63,7 @@ export default class PopupHandler {
 		const getKey = this.actions.getActivationKey;
 		if (getKey) {
 			getKey().then((key) => {
-				if (key !== 'off') {
+				if (key !== 'off' && !this.disposed) {
 					this.activationKeyListener = monitorActivationKey(() => this.openClosestToCaret(), key);
 				}
 			});
@@ -172,6 +173,19 @@ export default class PopupHandler {
 				host.hidePopover();
 			}
 		}
+	}
+
+	/** Close the card and remove every listener and element this handler added. */
+	public dispose() {
+		this.disposed = true;
+		this.close();
+		for (const box of this.currentLintBoxes) {
+			box.source.removeEventListener('pointerdown', this.pointerDownCallback as EventListener);
+		}
+		this.currentLintBoxes = [];
+		this.activationKeyListener?.();
+		this.activationKeyListener = undefined;
+		this.renderBox.remove();
 	}
 
 	/** Preserve logical selection through geometry updates, but never retarget stale row indices. */

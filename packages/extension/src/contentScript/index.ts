@@ -76,20 +76,28 @@ if (window === window.top) {
 			pageStartTime(Date.now(), performance.now(), navigation?.activationStart ?? 0),
 		);
 	}
-	window.addEventListener('pageshow', (event) => {
-		if (event.persisted) {
-			void ProtocolClient.pageStarted(Date.now());
-		}
-	});
+	window.addEventListener('pageshow', onPageShow);
 }
 
-const syncGoogleDocsBridge = createGoogleDocsBridgeSync(fw);
+function onPageShow(event: PageTransitionEvent) {
+	if (event.persisted) {
+		void ProtocolClient.pageStarted(Date.now());
+	}
+}
 
+const googleDocsBridge = createGoogleDocsBridgeSync(fw);
+const syncGoogleDocsBridge = googleDocsBridge.sync;
+
+let stopped = false;
+let keepAliveTimer: number | undefined;
 const keepAliveCallback = () => {
 	ProtocolClient.lint('', 'example.com', {});
 	void syncGoogleDocsBridge();
 
-	setTimeout(keepAliveCallback, 400);
+	// The request above can find the extension gone and shut down.
+	if (!stopped) {
+		keepAliveTimer = window.setTimeout(keepAliveCallback, 400);
+	}
 };
 
 keepAliveCallback();
@@ -261,23 +269,35 @@ function scan() {
 	});
 }
 
+function onFocusIn(event: FocusEvent) {
+	const target = event.target;
+	if (!(target instanceof HTMLTextAreaElement)) {
+		return;
+	}
+
+	maybeAddTextareaTarget(target, false);
+}
+
 scan();
-new MutationObserver(scan).observe(document.body, {
+const scanObserver = new MutationObserver(scan);
+scanObserver.observe(document.body, {
 	childList: true,
 	subtree: true,
 });
 
-document.addEventListener(
-	'focusin',
-	(event) => {
-		const target = event.target;
-		if (!(target instanceof HTMLTextAreaElement)) {
-			return;
-		}
+document.addEventListener('focusin', onFocusIn, { capture: true });
 
-		maybeAddTextareaTarget(target, false);
-	},
-	{ capture: true },
-);
+const lateScanTimer = window.setTimeout(scan, 1000);
 
-setTimeout(scan, 1000);
+// After the extension is reloaded, updated or turned off, Chrome leaves this script
+// running in open tabs without a background to talk to. Leave the page as it was.
+ProtocolClient.onContextLost(() => {
+	stopped = true;
+	window.clearTimeout(keepAliveTimer);
+	window.clearTimeout(lateScanTimer);
+	scanObserver.disconnect();
+	document.removeEventListener('focusin', onFocusIn, { capture: true });
+	window.removeEventListener('pageshow', onPageShow);
+	googleDocsBridge.dispose();
+	fw.shutdown();
+});

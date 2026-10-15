@@ -50,8 +50,12 @@ export function isGoogleDocsPage(): boolean {
 	);
 }
 
-export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<void> {
+export function createGoogleDocsBridgeSync(fw: LintFramework): {
+	sync: () => Promise<void>;
+	dispose: () => void;
+} {
 	let bridgeClient: GoogleDocsBridgeClient | null = null;
+	let disposed = false;
 	let bridgeAttached = false;
 	let syncInFlight = false;
 	let syncPending = false;
@@ -518,6 +522,10 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 	}
 
 	async function syncGoogleDocsBridge() {
+		if (disposed) {
+			return;
+		}
+
 		if (!isGoogleDocsPage()) {
 			disposeBridgeClient();
 			bridgeAttached = false;
@@ -570,5 +578,12 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): () => Promise<voi
 		}
 	}
 
-	return syncGoogleDocsBridge;
+	/** Stop syncing and remove the mirror of the document text. */
+	function dispose() {
+		disposed = true;
+		disposeBridgeClient();
+		document.getElementById(GOOGLE_DOCS_TARGET_ID)?.remove();
+	}
+
+	return { sync: syncGoogleDocsBridge, dispose };
 }

@@ -162,6 +162,20 @@ export default class Highlights {
 		this.pruneDetachedSources();
 	}
 
+	/** Remove every mark, CSS highlight and style this instance added to the page. */
+	public dispose() {
+		for (const kind of this.highlights?.keys() ?? []) {
+			CSS.highlights.delete(`inkling-${kind}`);
+			document.getElementById(`inkling-highlight-style-${kind}`)?.remove();
+		}
+		this.highlights?.clear();
+
+		for (const box of this.renderBoxes.values()) {
+			box.remove();
+		}
+		this.renderBoxes.clear();
+	}
+
 	/** Remove the render boxes for sources that aren't attached any longer. */
 	private pruneDetachedSources() {
 		for (const [source, box] of this.renderBoxes.entries()) {

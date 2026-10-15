@@ -55,6 +55,10 @@ export default class LintFramework {
 	private lintRequest: Promise<unknown> | null = null;
 	private renderRequested = false;
 	private lintDelayTimer: number | null = null;
+	private pollTimer: number | null = null;
+	private hotkeyListener: ((event: KeyboardEvent) => void) | null = null;
+	/** Set by `shutdown`; nothing runs or renders after it. */
+	private stopped = false;
 	private lastInputAt = 0;
 	private lastLints: { target: HTMLElement; lints: UnpackedLintGroups }[] = [];
 	private lastBoxes: IgnorableLintBox[] = [];
@@ -102,7 +106,10 @@ export default class LintFramework {
 		const timeoutCallback = () => {
 			this.update();
 
-			setTimeout(timeoutCallback, 1000);
+			// The update can find the extension gone and shut down.
+			if (!this.stopped) {
+				this.pollTimer = window.setTimeout(timeoutCallback, 1000);
+			}
 		};
 		timeoutCallback();
 
@@ -123,12 +130,18 @@ export default class LintFramework {
 	}
 
 	async update() {
+		if (this.stopped) {
+			return;
+		}
 		this.requestRender();
 		this.requestLintUpdate();
 	}
 
 	async requestLintUpdate(immediate = false): Promise<void> {
 		const delay = (await this.actions.getDelay?.()) ?? 0;
+		if (this.stopped) {
+			return;
+		}
 		const remainingDelay = delay - (Date.now() - this.lastInputAt);
 
 		// Extend the delay if there is one in effect (this is the debounce behavior).
@@ -211,6 +224,9 @@ export default class LintFramework {
 					this.lintRequest = null;
 				}
 			});
+			if (this.stopped) {
+				return;
+			}
 			this.lastLints = lintResults.filter((r) => r.target != null) as any;
 			this.requestRender();
 		}
@@ -221,50 +237,50 @@ export default class LintFramework {
 	 */
 	public async lintHotkey() {
 		const hotkey = await this.actions.getHotkey?.();
+		if (this.stopped) {
+			return;
+		}
 
-		document.addEventListener(
-			'keydown',
-			(event: KeyboardEvent) => {
-				if (!hotkey) return;
+		this.hotkeyListener = (event: KeyboardEvent) => {
+			if (!hotkey) return;
 
-				const key = event.key.toLowerCase();
-				const expectedKey = hotkey.key.toLowerCase();
+			const key = event.key.toLowerCase();
+			const expectedKey = hotkey.key.toLowerCase();
 
-				const hasCtrl = event.ctrlKey === hotkey.modifiers.includes('Ctrl');
-				const hasAlt = event.altKey === hotkey.modifiers.includes('Alt');
-				const hasShift = event.shiftKey === hotkey.modifiers.includes('Shift');
+			const hasCtrl = event.ctrlKey === hotkey.modifiers.includes('Ctrl');
+			const hasAlt = event.altKey === hotkey.modifiers.includes('Alt');
+			const hasShift = event.shiftKey === hotkey.modifiers.includes('Shift');
 
-				const match = key === expectedKey && hasCtrl && hasAlt && hasShift;
+			const match = key === expectedKey && hasCtrl && hasAlt && hasShift;
 
-				if (match) {
-					event.preventDefault();
-					event.stopImmediatePropagation();
+			if (match) {
+				event.preventDefault();
+				event.stopImmediatePropagation();
 
-					const caretPosition = getCaretPosition();
+				const caretPosition = getCaretPosition();
 
-					if (caretPosition != null) {
-						const closestIdx = closestBox(caretPosition, this.lastBoxes);
+				if (caretPosition != null) {
+					const closestIdx = closestBox(caretPosition, this.lastBoxes);
 
-						if (closestIdx < 0) {
-							return;
-						}
+					if (closestIdx < 0) {
+						return;
+					}
 
-						const previousBox = this.lastBoxes[closestIdx];
-						const suggestions = previousBox.lint.suggestions;
-						if (suggestions.length > 0) {
-							previousBox.applySuggestion(suggestions[0]);
-						} else {
-							previousBox.ignoreLint?.();
-						}
+					const previousBox = this.lastBoxes[closestIdx];
+					const suggestions = previousBox.lint.suggestions;
+					if (suggestions.length > 0) {
+						previousBox.applySuggestion(suggestions[0]);
+					} else {
+						previousBox.ignoreLint?.();
 					}
 				}
-			},
-			{ capture: true },
-		);
+			}
+		};
+		document.addEventListener('keydown', this.hotkeyListener, { capture: true });
 	}
 
 	public async addTarget(target: Node) {
-		if (!this.targets.has(target)) {
+		if (!this.stopped && !this.targets.has(target)) {
 			this.targets.add(target);
 			this.update();
 			this.attachTargetListeners(target);
@@ -279,6 +295,40 @@ export default class LintFramework {
 		} else {
 			throw new Error('HTMLElement not added.');
 		}
+	}
+
+	/**
+	 * Stop for good: remove every listener, observer, timer and mark this framework added,
+	 * leaving the page as it was before. Used once the extension that runs it is gone.
+	 */
+	public shutdown() {
+		if (this.stopped) {
+			return;
+		}
+		this.stopped = true;
+
+		if (this.pollTimer != null) {
+			window.clearTimeout(this.pollTimer);
+		}
+		if (this.lintDelayTimer != null) {
+			window.clearTimeout(this.lintDelayTimer);
+		}
+		for (const event of PAGE_EVENTS) {
+			window.removeEventListener(event, this.updateEventCallback);
+		}
+		if (this.hotkeyListener != null) {
+			document.removeEventListener('keydown', this.hotkeyListener, { capture: true });
+		}
+		for (const target of this.targets) {
+			this.detachTargetListeners(target);
+		}
+		this.targets.clear();
+
+		this.lastLints = [];
+		this.lastBoxes = [];
+		this.lastLintBoxes = [];
+		this.popupHandler.dispose();
+		this.highlights.dispose();
 	}
 
 	/** Return the last known ignorable lint boxes rendered on-screen. */
@@ -389,6 +439,10 @@ export default class LintFramework {
 		this.renderRequested = true;
 
 		requestAnimationFrame(() => {
+			if (this.stopped) {
+				return;
+			}
+
 			const boxes = this.lastLints.flatMap(({ target, lints }) => {
 				if (!target) {
 					return [];

@@ -5,11 +5,21 @@ import { withExtension } from 'playwright-webextext';
 
 const pathToExtension = path.join(import.meta.dirname, '../build');
 
-const test = base.extend<{ keepInstallPage: boolean }>({
+const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] }>({
 	/** Leave open the settings page that a fresh install without a server opens. */
 	keepInstallPage: [false, { option: true }],
+	/** Command line arguments for the browser on top of the configured ones. */
+	extraBrowserArgs: [[], { option: true }],
 	context: async (
-		{ playwright, browserName, contextOptions, launchOptions, headless, keepInstallPage },
+		{
+			playwright,
+			browserName,
+			contextOptions,
+			launchOptions,
+			headless,
+			keepInstallPage,
+			extraBrowserArgs,
+		},
 		use,
 		testInfo,
 	) => {
@@ -24,6 +34,7 @@ const test = base.extend<{ keepInstallPage: boolean }>({
 		const context = await browserType.launchPersistentContext(profile, {
 			...contextOptions,
 			...launchOptions,
+			args: [...(launchOptions.args ?? []), ...extraBrowserArgs],
 			headless,
 		});
 

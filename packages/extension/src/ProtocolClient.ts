@@ -9,9 +9,49 @@ export default class ProtocolClient {
 		ttlAutopurge: true,
 	});
 
-	/** Sends a message to the background; rejects when the background answers with an error. */
+	private static contextLostHandler: (() => void) | null = null;
+	private static contextLost = false;
+
+	/**
+	 * Call `handler` once the extension that runs this script was reloaded, updated or
+	 * turned off. Its background is gone for good then, and no request is answered again.
+	 */
+	public static onContextLost(handler: () => void): void {
+		this.contextLostHandler = handler;
+	}
+
+	/** Whether the extension context is gone. Tells the handler the first time it is. */
+	private static checkContextLost(): boolean {
+		if (this.contextLost) {
+			return true;
+		}
+		// An orphaned content script keeps chrome.runtime, but its id is gone.
+		if (globalThis.chrome?.runtime?.id != null) {
+			return false;
+		}
+		this.contextLost = true;
+		this.lintCache.clear();
+		this.contextLostHandler?.();
+		return true;
+	}
+
+	/**
+	 * Sends a message to the background; rejects when the background answers with an error.
+	 * Once the extension context is lost, it never settles: every caller is shutting down,
+	 * and a rejection would only log an error per request.
+	 */
 	private static async send(message: unknown): Promise<any> {
-		return unwrapResponse(await chrome.runtime.sendMessage(message));
+		if (this.checkContextLost()) {
+			return new Promise(() => {});
+		}
+		try {
+			return unwrapResponse(await chrome.runtime.sendMessage(message));
+		} catch (error) {
+			if (this.checkContextLost()) {
+				return new Promise(() => {});
+			}
+			throw error;
+		}
 	}
 
 	private static cacheKey(text: string, domain: string, options?: LintOptions): string {
@@ -28,6 +68,10 @@ export default class ProtocolClient {
 		domain: string,
 		options?: LintOptions,
 	): Promise<UnpackedLintGroups> {
+		// A cached answer would hide that the extension is gone; the keepalive relies on this.
+		if (this.checkContextLost()) {
+			return new Promise(() => {});
+		}
 		const key = this.cacheKey(text, domain, options);
 		let p = this.lintCache.get(key);
 		if (!p) {
