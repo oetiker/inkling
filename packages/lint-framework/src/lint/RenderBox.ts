@@ -44,11 +44,7 @@ export default class RenderBox {
 
 	/** Remove the box from the DOM. */
 	public remove() {
-		try {
-			this.shadowHost.outerHTML = this.shadowHost.outerHTML;
-		} catch (e) {
-			console.error(e);
-		}
+		this.shadowHost.remove();
 		this.virtualRoot = undefined;
 		this.virtualTree = undefined;
 	}
