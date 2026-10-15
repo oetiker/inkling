@@ -10,13 +10,35 @@ if (isWordPress() || isSubstack()) {
 	ProtocolClient.setDomainEnabled(window.location.hostname, true, false);
 }
 
+/** The check delay, asked for once and again after the setting changed. */
+let delay: Promise<number> | null = null;
+
+function getDelay(): Promise<number> {
+	if (delay == null) {
+		const request = ProtocolClient.getDelay();
+		// Ask again next time rather than keep a failed answer.
+		request.catch(() => {
+			if (delay === request) delay = null;
+		});
+		delay = request;
+	}
+	return delay;
+}
+
+// The options page stores the delay, and the next check in an open tab must use it.
+chrome.storage.onChanged.addListener((changes, areaName) => {
+	if (areaName === 'local' && 'delay' in changes) {
+		delay = null;
+	}
+});
+
 const fw = new LintFramework(
 	(text, domain, options) => ProtocolClient.lint(text, domain, options),
 	{
 		ignoreLint: (hash) => ProtocolClient.ignoreHash(hash),
 		getActivationKey: () => ProtocolClient.getActivationKey(),
 		getHotkey: () => ProtocolClient.getHotkey(),
-		getDelay: () => ProtocolClient.getDelay(),
+		getDelay,
 		openOptions: () => ProtocolClient.openOptions(),
 		addToUserDictionary: (words) => ProtocolClient.addToUserDictionary(words),
 		setRuleEnabled: async (ruleId, enabled) => {

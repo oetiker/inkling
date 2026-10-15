@@ -103,6 +103,25 @@ test('Invalid delay is rejected', async ({ context }) => {
 	await expect.poll(() => storageGet(context, 'delay')).toBe(60000);
 });
 
+test('A changed delay takes effect in an open tab without a reload', async ({ context }) => {
+	await storageSet(context, {
+		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
+		delay: 60000,
+	});
+	const page = await context.newPage();
+	await page.goto('http://localhost:18081/simple_textarea.html');
+	await page.locator('textarea').fill('Das ist ein Tset.');
+	// LintFramework re-checks every second, so a mark would show within this time.
+	await page.waitForTimeout(3000);
+	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
+
+	const options = await openOptions(context);
+	await options.getByLabel('Delay').fill('0');
+	await expect.poll(() => storageGet(context, 'delay')).toBe(0);
+	await page.bringToFront();
+	await expect(page.locator('#inkling-highlight').first()).toBeVisible({ timeout: 5000 });
+});
+
 test('Hotkey can be recorded and recording can be cancelled', async ({ context }) => {
 	const page = await openOptions(context);
 	const recorder = page.locator('#hotkey');
