@@ -39,6 +39,36 @@ test('Fresh profile shows defaults', async ({ context }) => {
 	await expect(page.getByLabel('Server URL')).toHaveValue('');
 });
 
+test.describe('install page', () => {
+	test.use({ keepInstallPage: true });
+
+	test('A fresh install without a server opens the settings page', async ({ context }) => {
+		const id = await extensionId(context);
+		await expect
+			.poll(() => context.pages().some((p) => p.url() === `chrome-extension://${id}/options.html`))
+			.toBe(true);
+	});
+});
+
+test('Use public server fills in the public server and the hint goes away', async ({ context }) => {
+	const page = await openOptions(context);
+	await expect(page.getByText('No server of your own?')).toBeVisible();
+	await page.getByRole('button', { name: 'Use public server' }).click();
+	await expect(page.getByLabel('Server URL')).toHaveValue('https://api.languagetool.org');
+	await expect(page.getByText('No server of your own?')).toBeHidden();
+	// Filling in the field saves nothing; "Save and Test" does.
+	expect(await storageGet(context, 'serverSettings')).toBeUndefined();
+});
+
+test('The public server hint is hidden when a server is set', async ({ context }) => {
+	await storageSet(context, {
+		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },
+	});
+	const page = await openOptions(context);
+	await expect(page.getByLabel('Server URL')).toHaveValue(MOCK_SERVER_URL);
+	await expect(page.getByText('No server of your own?')).toBeHidden();
+});
+
 test('Settings survive a reload', async ({ context }) => {
 	const page = await openOptions(context);
 	await page.getByLabel('Delay').fill('750');

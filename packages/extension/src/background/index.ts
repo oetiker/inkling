@@ -56,6 +56,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	return true;
 });
 
+// Without a server nothing gets checked, so a new user lands on the settings first.
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+	if (reason !== 'install') {
+		return;
+	}
+	const { serverUrl } = await getServerSettings();
+	if (serverUrl.trim().length === 0) {
+		chrome.runtime.openOptionsPage();
+	}
+});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
 	void clearTabPause(tabId);
 });

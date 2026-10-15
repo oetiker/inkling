@@ -61,6 +61,10 @@ export default defineManifest({
 		gecko: {
 			id: 'inkling@oetiker.ch',
 			strict_min_version: '146.0',
+			// The text of input fields, emails among them, goes to the LanguageTool server.
+			data_collection_permissions: {
+				required: ['websiteContent', 'personalCommunications'],
+			},
 		},
 	},
 	background: {

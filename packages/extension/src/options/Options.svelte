@@ -18,6 +18,9 @@ const activationKeyLabels: Record<ActivationKey, string> = {
 	[ActivationKey.Off]: 'Off',
 };
 
+/** LanguageTool's free server; its limits suit a test, not daily use. */
+const PUBLIC_SERVER_URL = 'https://api.languagetool.org';
+
 let serverUrl = $state('');
 let preferredVariants = $state('');
 let serverStatus: { ok: boolean; message: string } | null = $state(null);
@@ -231,6 +234,18 @@ async function exportEnabledDomainsJSON() {
           {@render row('server-url', 'Server URL', 'For example https://lt.example.com or http://localhost:8081. Leave empty to turn checking off.')}
           <Input id="server-url" placeholder="https://lt.example.com" bind:value={serverUrl} />
         </div>
+        {#if loaded && serverUrl.trim().length === 0}
+          <div class="flex flex-col gap-2 rounded-lg border p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-muted-foreground">
+              No server of your own? For a test, use the public server of
+              <a class="text-foreground underline underline-offset-4" href="https://languagetool.org" target="_blank" rel="noreferrer">LanguageTool</a>.
+              It has usage limits, and your text goes to LanguageTool.
+            </p>
+            <Button variant="outline" size="sm" onclick={() => (serverUrl = PUBLIC_SERVER_URL)}>
+              Use public server
+            </Button>
+          </div>
+        {/if}
         <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
           {@render row('preferred-variants', 'Preferred variants', 'Comma-separated, for example de-CH,en-GB. The server uses them when it detects the language of a text.')}
           <Input id="preferred-variants" placeholder="de-CH,en-GB" bind:value={preferredVariants} />
