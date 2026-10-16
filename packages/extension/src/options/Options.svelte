@@ -18,6 +18,17 @@ const activationKeyLabels: Record<ActivationKey, string> = {
 	[ActivationKey.Off]: 'Off',
 };
 
+/** The names of the settings as the page labels them, for save failures. */
+const settingLabels: Record<string, string> = {
+	delay: 'Delay',
+	defaultEnabled: 'Enable on new sites',
+	activationKey: 'Activation key',
+	hotkey: 'Apply-suggestion hotkey',
+	userDictionary: 'User dictionary',
+	disabledRules: 'Disabled rules',
+	ignoredLints: 'Ignored suggestions',
+};
+
 /** LanguageTool's free server; its limits suit a test, not daily use. */
 const PUBLIC_SERVER_URL = 'https://api.languagetool.org';
 
@@ -28,7 +39,11 @@ let serverBusy = $state(false);
 
 let loaded = $state(false);
 let loadError: string | null = $state(null);
-let saveError: string | null = $state(null);
+/** The failure of the latest save of each setting that failed, keyed by setting. */
+let saveErrors: Record<string, string> = $state({});
+/** The number of the latest save started for each setting. */
+const latestSave: Record<string, number> = {};
+let saveCount = 0;
 let defaultEnabled = $state(false);
 let delayText = $state('');
 let delayError = $state(false);
@@ -63,16 +78,28 @@ Promise.all([
 		loadError = e instanceof Error ? e.message : String(e);
 	});
 
-/** Runs a save and shows its failure; a later successful save hides the message again. */
-async function save(promise: Promise<unknown>): Promise<boolean> {
+/**
+ * Runs a save of `setting` and shows its failure. Only a later save of the same setting
+ * hides the message again, and only the latest save of a setting decides it, so saves
+ * that finish out of order neither hide a failure nor revive an old one.
+ */
+async function save(setting: string, promise: Promise<unknown>): Promise<boolean> {
+	const id = ++saveCount;
+	latestSave[setting] = id;
+	let error: string | null = null;
 	try {
 		await promise;
-		saveError = null;
-		return true;
 	} catch (e) {
-		saveError = e instanceof Error ? e.message : String(e);
-		return false;
+		error = e instanceof Error ? e.message : String(e);
 	}
+	if (latestSave[setting] === id) {
+		if (error == null) {
+			delete saveErrors[setting];
+		} else {
+			saveErrors[setting] = error;
+		}
+	}
+	return error == null;
 }
 
 /** Converts the content of a text area to a list with one entry per line. */
@@ -153,39 +180,39 @@ function onDelayInput(raw: string) {
 	const ok = /^\d+$/.test(value) && Number(value) <= MAX_DELAY_MS;
 	delayError = !ok;
 	if (ok) {
-		void save(ProtocolClient.setDelay(Number(value)));
+		void save('delay', ProtocolClient.setDelay(Number(value)));
 	}
 }
 
 function onDefaultEnabledChange(checked: boolean) {
 	defaultEnabled = checked;
-	void save(ProtocolClient.setDefaultEnabled(checked));
+	void save('defaultEnabled', ProtocolClient.setDefaultEnabled(checked));
 }
 
 function onActivationKeyChange(value: string) {
 	activationKey = value as ActivationKey;
-	void save(ProtocolClient.setActivationKey(activationKey));
+	void save('activationKey', ProtocolClient.setActivationKey(activationKey));
 }
 
 function onHotkeyChange(next: Hotkey) {
 	hotkey = next;
-	void save(ProtocolClient.setHotkey(next));
+	void save('hotkey', ProtocolClient.setHotkey(next));
 }
 
 $effect(() => {
 	if (loaded) {
-		void save(ProtocolClient.setUserDictionary(stringToList(userDict)));
+		void save('userDictionary', ProtocolClient.setUserDictionary(stringToList(userDict)));
 	}
 });
 
 $effect(() => {
 	if (loaded) {
-		void save(ProtocolClient.setDisabledRules(stringToList(disabledRules)));
+		void save('disabledRules', ProtocolClient.setDisabledRules(stringToList(disabledRules)));
 	}
 });
 
 async function clearIgnored() {
-	if (await save(ProtocolClient.clearIgnoredLints())) {
+	if (await save('ignoredLints', ProtocolClient.clearIgnoredLints())) {
 		ignoredCleared = true;
 	}
 }
@@ -221,11 +248,11 @@ async function exportEnabledDomainsJSON() {
   <div class="mx-auto flex max-w-2xl flex-col gap-6">
     <PageHeader subtitle="Settings" />
 
-    {#if saveError != null}
+    {#each Object.entries(saveErrors) as [setting, error] (setting)}
       <Alert.Root variant="destructive">
-        <Alert.Description>Could not save: {saveError}</Alert.Description>
+        <Alert.Description>Could not save "{settingLabels[setting]}": {error}</Alert.Description>
       </Alert.Root>
-    {/if}
+    {/each}
 
     {#if loadError != null}
       <Alert.Root variant="destructive">

@@ -191,6 +191,51 @@ for (const [what, answer] of [
 	});
 }
 
+test('A failed save stays visible when another setting saves later', async ({ context }) => {
+	const page = await openOptions(context);
+	await expect(page.getByLabel('Delay')).toHaveValue('500');
+	// Delay saves fail at once while they are broken; other saves succeed, but only later.
+	await page.evaluate(() => {
+		const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+		const w = window as unknown as { breakDelay: boolean; enabledSaved: boolean };
+		w.breakDelay = true;
+		w.enabledSaved = false;
+		Object.defineProperty(chrome.runtime, 'sendMessage', {
+			configurable: true,
+			value: async (message: { kind: string }) => {
+				if (message.kind === 'setDelay' && w.breakDelay) {
+					throw new Error('storage is full');
+				}
+				if (message.kind === 'setDefaultStatus') {
+					await new Promise((resolve) => setTimeout(resolve, 500));
+					const response = await send(message);
+					w.enabledSaved = true;
+					return response;
+				}
+				return send(message);
+			},
+		});
+	});
+
+	await page.getByRole('switch', { name: 'Enable on new sites' }).click();
+	await page.getByLabel('Delay').fill('750');
+	await expect
+		.poll(() => page.evaluate(() => (window as unknown as { enabledSaved: boolean }).enabledSaved))
+		.toBe(true);
+	// Let the page handle the late success before looking.
+	await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
+	await expect(page.getByRole('alert')).toContainText('Could not save "Delay"');
+	await expect(page.getByRole('alert')).toContainText('storage is full');
+
+	// Saving the same setting again clears its message.
+	await page.evaluate(() => {
+		(window as unknown as { breakDelay: boolean }).breakDelay = false;
+	});
+	await page.getByLabel('Delay').fill('800');
+	await expect.poll(() => storageGet(context, 'delay')).toBe(800);
+	await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
 test('Options page links to the source code', async ({ context }) => {
 	const page = await openOptions(context);
 	await expect(page.getByRole('link', { name: 'github.com/oetiker/inkling' })).toHaveAttribute(
