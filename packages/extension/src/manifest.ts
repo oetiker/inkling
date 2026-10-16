@@ -51,6 +51,8 @@ export default defineManifest({
 	default_locale: 'en',
 	version: packageData.version,
 	manifest_version: 3,
+	// The build targets Chrome 111, and content scripts in the page's own world need 111 too.
+	minimum_chrome_version: '111',
 	action: {
 		default_popup: 'popup.html',
 		default_icon: {
