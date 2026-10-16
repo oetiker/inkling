@@ -18,7 +18,10 @@ export default defineConfig({
 	/** Extremely important to avoid flaky tests. DO NOT CHANGE or I will kill you. */
 	repeatEach: 3,
 	/* Reporter to use. See https://playwright.dev/docs/test-reporters */
-	reporter: 'html',
+	// 'line' prints each failure with its error as it happens and one line per passing test,
+	// so a log of `make test-chromium` says what failed. The html report stays for the
+	// screenshots.
+	reporter: [['line'], ['html', { open: 'never' }]],
 	use: {
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: 'on-first-retry',
