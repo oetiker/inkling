@@ -449,7 +449,9 @@ async function handleGetUserDictionary(): Promise<GetUserDictionaryResponse> {
 }
 
 async function handleGetActivationKey(): Promise<GetActivationKeyResponse> {
-	const resp = await chrome.storage.local.get({ activationKey: ActivationKey.Off });
+	const resp = await chrome.storage.local.get<{ activationKey: ActivationKey }>({
+		activationKey: ActivationKey.Off,
+	});
 	return { kind: 'getActivationKey', key: resp.activationKey };
 }
 
@@ -481,14 +483,14 @@ async function handleSetHotkey(req: SetHotkeyRequest): Promise<UnitResponse> {
 }
 
 async function getServerSettings(): Promise<ServerSettings> {
-	const resp = await chrome.storage.local.get({
+	const resp = await chrome.storage.local.get<{ serverSettings: ServerSettings }>({
 		serverSettings: { serverUrl: __DEFAULT_SERVER_URL__, preferredVariants: '' },
 	});
 	return resp.serverSettings;
 }
 
 async function getDisabledRules(): Promise<string[]> {
-	const resp = await chrome.storage.local.get({ disabledRules: [] });
+	const resp = await chrome.storage.local.get<{ disabledRules: string[] }>({ disabledRules: [] });
 	return resp.disabledRules;
 }
 
@@ -600,7 +602,7 @@ async function setDefaultEnable(status: boolean) {
 
 /** Check if checking has been enabled by default. */
 async function enabledByDefault(): Promise<boolean> {
-	const req = await chrome.storage.local.get({ defaultEnable: false });
+	const req = await chrome.storage.local.get<{ defaultEnable: boolean }>({ defaultEnable: false });
 	return req.defaultEnable;
 }
 
