@@ -1,6 +1,7 @@
 <script lang="ts">
 import Pause from '@lucide/svelte/icons/pause';
 import Play from '@lucide/svelte/icons/play';
+import * as Alert from '$lib/components/ui/alert/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
@@ -18,15 +19,25 @@ let paused = $state(false);
 // Set once the user acted, so a slow initial read cannot overwrite the choice.
 let enabledTouched = false;
 let pausedTouched = false;
+// Without the stored state the switch and the pause button would only guess.
+let loadError: string | null = $state(null);
+
+function showLoadError(e: unknown) {
+	loadError = e instanceof Error ? e.message : String(e);
+}
 
 $effect(() => {
 	if (host != null && tab != null) {
-		ProtocolClient.getDomainEnabled(host).then((e) => {
-			if (!enabledTouched) enabled = e;
-		});
-		ProtocolClient.getTabPaused(tab.id).then((p) => {
-			if (!pausedTouched) paused = p;
-		});
+		ProtocolClient.getDomainEnabled(host)
+			.then((e) => {
+				if (!enabledTouched) enabled = e;
+			})
+			.catch(showLoadError);
+		ProtocolClient.getTabPaused(tab.id)
+			.then((p) => {
+				if (!pausedTouched) paused = p;
+			})
+			.catch(showLoadError);
 	}
 });
 
@@ -77,6 +88,10 @@ const status = $derived(!enabled ? t('statusSiteOff') : paused ? t('statusPaused
     </div>
     <Button variant="outline" size="sm" disabled><Pause />{t('pauseInTab')}</Button>
   </div>
+{:else if loadError != null}
+  <Alert.Root variant="destructive">
+    <Alert.Description>{t('couldNotLoadSite', loadError)}</Alert.Description>
+  </Alert.Root>
 {:else}
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-3">

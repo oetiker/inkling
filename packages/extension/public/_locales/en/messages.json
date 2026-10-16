@@ -213,6 +213,14 @@
 	"resumeInTab": {
 		"message": "Resume in this tab"
 	},
+	"couldNotLoadSite": {
+		"message": "Could not load the state of this site: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
 	"statusSiteOff": {
 		"message": "Off for this site"
 	},

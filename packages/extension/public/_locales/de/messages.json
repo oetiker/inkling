@@ -213,6 +213,14 @@
 	"resumeInTab": {
 		"message": "In diesem Tab fortsetzen"
 	},
+	"couldNotLoadSite": {
+		"message": "Der Zustand dieser Website konnte nicht geladen werden: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
 	"statusSiteOff": {
 		"message": "Aus für diese Website"
 	},

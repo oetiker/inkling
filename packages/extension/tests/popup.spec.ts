@@ -202,6 +202,52 @@ test('Popup says so when it cannot load the server setting', async ({ context })
 	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
 });
 
+test('Popup says so when it cannot load whether the site is on', async ({ context }) => {
+	await setupServer(context);
+	const a = await context.newPage();
+	await a.goto(`http://localhost:18081/${PAGE}?tab=a`);
+	const id = await tabIdOf(context, '?tab=a');
+	const background = await getBackground(context);
+	// Make the background fail to read the site status, as a broken storage would.
+	await background.evaluate(() => {
+		const get = chrome.storage.local.get.bind(chrome.storage.local);
+		Object.defineProperty(chrome.storage.local, 'get', {
+			configurable: true,
+			value: (keys: unknown) =>
+				Array.isArray(keys) && keys.some((k) => String(k).startsWith('domainStatus '))
+					? Promise.reject(new Error('storage is broken'))
+					: get(keys as string),
+		});
+	});
+	const popup = await openPopupFor(context, id);
+	await expect(popup.getByRole('alert')).toContainText(
+		'Could not load the state of this site: storage is broken',
+	);
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
+	await expect(popup.getByText('Off for this site')).toHaveCount(0);
+});
+
+test('Popup says so when it cannot load whether the tab is paused', async ({ context }) => {
+	await setupServer(context);
+	const a = await context.newPage();
+	await a.goto(`http://localhost:18081/${PAGE}?tab=a`);
+	const id = await tabIdOf(context, '?tab=a');
+	const background = await getBackground(context);
+	// Make the background fail to read the pause, as a broken storage would.
+	await background.evaluate(() => {
+		Object.defineProperty(chrome.storage.session, 'get', {
+			configurable: true,
+			value: () => Promise.reject(new Error('storage is broken')),
+		});
+	});
+	const popup = await openPopupFor(context, id);
+	await expect(popup.getByRole('alert')).toContainText(
+		'Could not load the state of this site: storage is broken',
+	);
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
+	await expect(popup.getByRole('button', { name: 'Pause in this tab' })).toHaveCount(0);
+});
+
 test('Popup cannot act on about:blank', async ({ context }) => {
 	await setupServer(context);
 	const blank = await context.newPage();
