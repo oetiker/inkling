@@ -17,10 +17,44 @@ const ICON_BOOK_PLUS = `<svg ${ICON_ATTRS}><path d="M12 7v6"/><path d="M4 19.5v-
 const ICON_BAN = `<svg ${ICON_ATTRS}><circle cx="12" cy="12" r="10"/><path d="M4.929 4.929 19.07 19.071"/></svg>`;
 const ICON_SETTINGS = `<svg ${ICON_ATTRS}><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>`;
 
+/** The card's texts, so that the page showing it can supply them in its own language. */
+export type SuggestionBoxText = {
+	/** The name of the group of suggestion buttons. */
+	suggestions: string;
+	ignore: string;
+	close: string;
+	addToDictionary: string;
+	disableRule: (ruleId: string) => string;
+	settings: string;
+	/** The label of a suggestion that removes the marked text. */
+	remove: string;
+	/** The label of a suggestion that inserts an empty text. */
+	insert: string;
+	replaceTitle: (original: string, replacement: string) => string;
+	removeTitle: (original: string) => string;
+	insertAfterTitle: (insertion: string, original: string) => string;
+};
+
+export const ENGLISH_SUGGESTION_BOX_TEXT: SuggestionBoxText = {
+	suggestions: 'Suggestions',
+	ignore: 'Ignore',
+	close: 'Close',
+	addToDictionary: 'Add to dictionary',
+	disableRule: (ruleId) => `Disable rule ${ruleId}`,
+	settings: 'Settings',
+	remove: 'Remove',
+	insert: 'Insert',
+	replaceTitle: (original, replacement) => `Replace "${original}" with "${replacement}"`,
+	removeTitle: (original) => `Remove "${original}"`,
+	insertAfterTitle: (insertion, original) => `Insert "${insertion}" after "${original}"`,
+};
+
 export type SuggestionBoxActions = {
 	openOptions?: () => Promise<void>;
 	addToUserDictionary?: (words: string[]) => Promise<void>;
 	setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
+	/** The card's texts; English when not given. */
+	text?: SuggestionBoxText;
 };
 
 export type SuggestionBoxProps = {
@@ -186,20 +220,24 @@ export function focusSuggestion(root: ParentNode, index: number) {
 	target?.focus({ preventScroll: true });
 }
 
-function suggestionLabel(suggestion: UnpackedSuggestion) {
+function suggestionLabel(suggestion: UnpackedSuggestion, text: SuggestionBoxText) {
 	if (suggestion.replacement_text) return suggestion.replacement_text;
-	return suggestion.kind === SuggestionKind.Remove ? 'Remove' : 'Insert';
+	return suggestion.kind === SuggestionKind.Remove ? text.remove : text.insert;
 }
 
 /** Describe the actual edit, rather than just repeating the button's label. */
-function suggestionTitle(suggestion: UnpackedSuggestion, original: string): string {
+function suggestionTitle(
+	suggestion: UnpackedSuggestion,
+	original: string,
+	text: SuggestionBoxText,
+): string {
 	switch (suggestion.kind) {
 		case SuggestionKind.Replace:
-			return `Replace "${original}" with "${suggestion.replacement_text}"`;
+			return text.replaceTitle(original, suggestion.replacement_text);
 		case SuggestionKind.Remove:
-			return `Remove "${original}"`;
+			return text.removeTitle(original);
 		case SuggestionKind.InsertAfter:
-			return `Insert "${suggestion.replacement_text}" after "${original}"`;
+			return text.insertAfterTitle(suggestion.replacement_text, original);
 	}
 }
 
@@ -285,6 +323,7 @@ export default function SuggestionBox(props: SuggestionBoxProps) {
 	const { box, actions, close } = props;
 	const lint = box.lint;
 	const suggestions = lint.suggestions;
+	const text = actions.text ?? ENGLISH_SUGGESTION_BOX_TEXT;
 	const refocusClose = () => {
 		restoreCursorState();
 		close();
@@ -325,12 +364,12 @@ export default function SuggestionBox(props: SuggestionBoxProps) {
 		h('span', { id: 'inkling-kind', className: 'inkling-kind' }, lint.lint_kind_pretty),
 		box.ignoreLint
 			? iconButton(
-					'Ignore',
+					text.ignore,
 					ICON_X,
 					() => runAndClose(box.ignoreLint!),
 					'inkling-icon inkling-close',
 				)
-			: iconButton('Close', ICON_X, refocusClose, 'inkling-icon inkling-close'),
+			: iconButton(text.close, ICON_X, refocusClose, 'inkling-icon inkling-close'),
 	]);
 
 	const suggestionButtons = suggestions.map((suggestion, index) => {
@@ -350,31 +389,31 @@ export default function SuggestionBox(props: SuggestionBoxProps) {
 				key: JSON.stringify([suggestion.kind, suggestion.replacement_text, duplicateIndex]),
 				id: `inkling-suggestion-${index}`,
 				tabIndex: selected ? 0 : -1,
-				title: suggestionTitle(suggestion, lint.problem_text),
+				title: suggestionTitle(suggestion, lint.problem_text, text),
 				attributes: { role: 'menuitem' },
 				onfocus: () => props.onSelect(index),
 			},
-			suggestionLabel(suggestion),
+			suggestionLabel(suggestion, text),
 		);
 	});
 
 	const bar = [
 		...(lint.lint_kind === 'Spelling' && actions.addToUserDictionary
 			? [
-					iconButton('Add to dictionary', ICON_BOOK_PLUS, () =>
+					iconButton(text.addToDictionary, ICON_BOOK_PLUS, () =>
 						runAndClose(() => actions.addToUserDictionary!([lint.problem_text])),
 					),
 				]
 			: []),
 		...(actions.setRuleEnabled && box.rule
 			? [
-					iconButton(`Disable rule ${box.rule}`, ICON_BAN, () =>
+					iconButton(text.disableRule(box.rule), ICON_BAN, () =>
 						runAndClose(() => actions.setRuleEnabled!(box.rule, false)),
 					),
 				]
 			: []),
 		...(actions.openOptions
-			? [iconButton('Settings', ICON_SETTINGS, () => void actions.openOptions!())]
+			? [iconButton(text.settings, ICON_SETTINGS, () => void actions.openOptions!())]
 			: []),
 	];
 
@@ -397,7 +436,7 @@ export default function SuggestionBox(props: SuggestionBoxProps) {
 							'div',
 							{
 								className: 'inkling-suggestions',
-								attributes: { role: 'menu', 'aria-label': 'Suggestions' },
+								attributes: { role: 'menu', 'aria-label': text.suggestions },
 							},
 							suggestionButtons,
 						),

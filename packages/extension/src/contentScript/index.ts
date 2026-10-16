@@ -4,7 +4,9 @@ import {
 	LintFramework,
 	leafNodes,
 	removeLeftoverMarks,
+	type SuggestionBoxText,
 } from 'lint-framework';
+import { t } from '../i18n';
 import isSubstack from '../isSubstack';
 import isWordPress from '../isWordPress';
 import ProtocolClient from '../ProtocolClient';
@@ -64,6 +66,21 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 	}
 });
 
+/** The suggestion card in the browser's interface language. */
+const cardText: SuggestionBoxText = {
+	suggestions: t('cardSuggestions'),
+	ignore: t('cardIgnore'),
+	close: t('cardClose'),
+	addToDictionary: t('cardAddToDictionary'),
+	disableRule: (ruleId) => t('cardDisableRule', ruleId),
+	settings: t('cardSettings'),
+	remove: t('cardRemove'),
+	insert: t('cardInsert'),
+	replaceTitle: (original, replacement) => t('cardReplaceTitle', original, replacement),
+	removeTitle: (original) => t('cardRemoveTitle', original),
+	insertAfterTitle: (insertion, original) => t('cardInsertAfterTitle', insertion, original),
+};
+
 const fw = new LintFramework(
 	(text, domain, options) => ProtocolClient.lint(text, domain, options),
 	{
@@ -78,6 +95,7 @@ const fw = new LintFramework(
 			await ProtocolClient.setRuleEnabled(ruleId, enabled);
 			fw.update();
 		},
+		cardText,
 	},
 );
 

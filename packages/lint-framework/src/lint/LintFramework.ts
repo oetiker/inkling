@@ -5,6 +5,7 @@ import { createTextSpanRangeFinder, isHeading, isVisible } from './domUtils';
 import { getCaretPosition, getCMRoot } from './editorUtils';
 import Highlights from './Highlights';
 import PopupHandler from './PopupHandler';
+import type { SuggestionBoxText } from './SuggestionBox';
 import { createLintRemapper } from './spanMapping';
 import type { LintOptions, Span } from './types';
 import type { UnpackedLintGroups } from './unpackLint';
@@ -28,6 +29,8 @@ type FrameworkActions = {
 	openOptions?: () => Promise<void>;
 	addToUserDictionary?: (words: string[]) => Promise<void>;
 	setRuleEnabled?: (ruleId: string, enabled: boolean) => Promise<void> | void;
+	/** The suggestion card's texts; English when not given. */
+	cardText?: SuggestionBoxText;
 };
 
 /** Events on an input (any kind) that can trigger a re-render. */
@@ -94,6 +97,7 @@ export default class LintFramework {
 			openOptions: actions.openOptions,
 			addToUserDictionary: actions.addToUserDictionary,
 			setRuleEnabled: actions.setRuleEnabled,
+			text: actions.cardText,
 		});
 		this.targets = new Set();
 		this.scrollableAncestors = new Map();

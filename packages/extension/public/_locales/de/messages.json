@@ -1,0 +1,276 @@
+{
+	"extensionDescription": {
+		"message": "Prüft, was Sie im Browser schreiben, mit Ihrem eigenen LanguageTool-Server"
+	},
+	"optionsTitle": {
+		"message": "Inkling-Einstellungen"
+	},
+	"logoAlt": {
+		"message": "Inkling-Logo"
+	},
+	"settingsSubtitle": {
+		"message": "Einstellungen"
+	},
+	"couldNotSaveSetting": {
+		"message": "«$ARG1$» konnte nicht gespeichert werden: $ARG2$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	},
+	"couldNotLoad": {
+		"message": "Die Einstellungen konnten nicht geladen werden: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"serverCard": {
+		"message": "Server"
+	},
+	"serverUrl": {
+		"message": "Server-URL"
+	},
+	"serverUrlHelp": {
+		"message": "Zum Beispiel https://lt.example.com oder http://localhost:8081. Leer lassen, um die Prüfung auszuschalten."
+	},
+	"publicServerHint": {
+		"message": "Kein eigener Server? Für einen Test können Sie den öffentlichen Server von $ARG1$ nutzen. Er hat Nutzungsgrenzen, und Ihr Text geht an LanguageTool.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"usePublicServer": {
+		"message": "Öffentlichen Server verwenden"
+	},
+	"preferredVariants": {
+		"message": "Bevorzugte Varianten"
+	},
+	"preferredVariantsHelp": {
+		"message": "Durch Kommas getrennt, zum Beispiel de-CH,en-GB. Der Server nutzt sie, wenn er die Sprache eines Textes erkennt."
+	},
+	"saveAndTest": {
+		"message": "Speichern und testen"
+	},
+	"invalidServerUrl": {
+		"message": "Geben Sie eine URL ein, die mit https:// oder http:// beginnt."
+	},
+	"serverPermissionDenied": {
+		"message": "Inkling braucht Zugriff auf $ARG1$, um Ihren Text an den Server zu senden. Erlauben Sie den Zugriff, wenn der Browser fragt, und klicken Sie dann nochmals auf «Speichern und testen». Die Einstellung wurde nicht gespeichert.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"checkingOffWithoutServer": {
+		"message": "Die Prüfung ist aus, bis Sie einen Server eintragen."
+	},
+	"couldNotSave": {
+		"message": "Speichern fehlgeschlagen: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"connected": {
+		"message": "Verbunden: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"generalCard": {
+		"message": "Allgemein"
+	},
+	"defaultEnabled": {
+		"message": "Auf neuen Websites einschalten"
+	},
+	"defaultEnabledHelp": {
+		"message": "Kann manche Web-Apps stören."
+	},
+	"delay": {
+		"message": "Verzögerung"
+	},
+	"delayHelp": {
+		"message": "So viele Millisekunden nach der letzten Eingabe warten, bevor der Text erneut geprüft wird."
+	},
+	"delayError": {
+		"message": "Geben Sie eine ganze Zahl von Millisekunden zwischen 0 und 60000 ein."
+	},
+	"activationKey": {
+		"message": "Aktivierungstaste"
+	},
+	"activationKeyHelp": {
+		"message": "Markierungen erst zeigen, wenn Sie diese Taste zweimal drücken."
+	},
+	"activationKeyShift": {
+		"message": "Zweimal Umschalt"
+	},
+	"activationKeyControl": {
+		"message": "Zweimal Ctrl"
+	},
+	"activationKeyOff": {
+		"message": "Aus"
+	},
+	"hotkey": {
+		"message": "Tastenkürzel für Vorschläge"
+	},
+	"hotkeyHelp": {
+		"message": "Übernimmt den ersten Vorschlag für das zuletzt markierte Wort."
+	},
+	"currentHotkey": {
+		"message": "Aktuelles Tastenkürzel"
+	},
+	"pressKeys": {
+		"message": "Tasten drücken …"
+	},
+	"changeHotkey": {
+		"message": "Tastenkürzel ändern"
+	},
+	"userDictionary": {
+		"message": "Eigenes Wörterbuch"
+	},
+	"userDictionaryHelp": {
+		"message": "Ein Wort pro Zeile. Diese Wörter werden nie als Tippfehler markiert."
+	},
+	"exportDomains": {
+		"message": "Eingeschaltete Websites exportieren"
+	},
+	"exportDomainsHelp": {
+		"message": "Lädt eine JSON-Liste der Websites herunter, auf denen die Prüfung eingeschaltet ist."
+	},
+	"exportJson": {
+		"message": "JSON exportieren"
+	},
+	"rulesCard": {
+		"message": "Regeln"
+	},
+	"disabledRules": {
+		"message": "Ausgeschaltete Regeln"
+	},
+	"disabledRulesHelp": {
+		"message": "Regel-IDs von LanguageTool, eine pro Zeile. «Regel ausschalten» in einem Vorschlag fügt dessen Regel hier ein."
+	},
+	"ignoredSuggestions": {
+		"message": "Ignorierte Vorschläge"
+	},
+	"ignoredSuggestionsHelp": {
+		"message": "Alle ignorierten Vorschläge wieder anzeigen."
+	},
+	"clear": {
+		"message": "Zurücksetzen"
+	},
+	"cleared": {
+		"message": "Zurückgesetzt"
+	},
+	"sourceCode": {
+		"message": "Quellcode und Fehlermeldungen:"
+	},
+	"noServerTitle": {
+		"message": "Kein LanguageTool-Server eingetragen"
+	},
+	"noServerText": {
+		"message": "Einen Server tragen Sie in den $ARG1$ ein.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"openSettings": {
+		"message": "Einstellungen"
+	},
+	"settingsButton": {
+		"message": "Einstellungen"
+	},
+	"cannotCheckPage": {
+		"message": "Inkling kann diese Seite nicht prüfen"
+	},
+	"checkThisSite": {
+		"message": "Diese Website prüfen"
+	},
+	"pauseInTab": {
+		"message": "In diesem Tab pausieren"
+	},
+	"resumeInTab": {
+		"message": "In diesem Tab fortsetzen"
+	},
+	"statusSiteOff": {
+		"message": "Aus für diese Website"
+	},
+	"statusPaused": {
+		"message": "In diesem Tab pausiert"
+	},
+	"statusOn": {
+		"message": "Prüfung ist an"
+	},
+	"cardSuggestions": {
+		"message": "Vorschläge"
+	},
+	"cardIgnore": {
+		"message": "Ignorieren"
+	},
+	"cardClose": {
+		"message": "Schliessen"
+	},
+	"cardAddToDictionary": {
+		"message": "Zum Wörterbuch hinzufügen"
+	},
+	"cardDisableRule": {
+		"message": "Regel $ARG1$ ausschalten",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"cardSettings": {
+		"message": "Einstellungen"
+	},
+	"cardRemove": {
+		"message": "Entfernen"
+	},
+	"cardInsert": {
+		"message": "Einfügen"
+	},
+	"cardReplaceTitle": {
+		"message": "«$ARG1$» durch «$ARG2$» ersetzen",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	},
+	"cardRemoveTitle": {
+		"message": "«$ARG1$» entfernen",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"cardInsertAfterTitle": {
+		"message": "«$ARG1$» nach «$ARG2$» einfügen",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	}
+}

@@ -1,0 +1,276 @@
+{
+	"extensionDescription": {
+		"message": "Checks what you write in the browser with your own LanguageTool server"
+	},
+	"optionsTitle": {
+		"message": "Inkling Settings"
+	},
+	"logoAlt": {
+		"message": "Inkling logo"
+	},
+	"settingsSubtitle": {
+		"message": "Settings"
+	},
+	"couldNotSaveSetting": {
+		"message": "Could not save \"$ARG1$\": $ARG2$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	},
+	"couldNotLoad": {
+		"message": "Could not load the settings: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"serverCard": {
+		"message": "Server"
+	},
+	"serverUrl": {
+		"message": "Server URL"
+	},
+	"serverUrlHelp": {
+		"message": "For example https://lt.example.com or http://localhost:8081. Leave empty to turn checking off."
+	},
+	"publicServerHint": {
+		"message": "No server of your own? For a test, use the public server of $ARG1$. It has usage limits, and your text goes to LanguageTool.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"usePublicServer": {
+		"message": "Use public server"
+	},
+	"preferredVariants": {
+		"message": "Preferred variants"
+	},
+	"preferredVariantsHelp": {
+		"message": "Comma-separated, for example de-CH,en-GB. The server uses them when it detects the language of a text."
+	},
+	"saveAndTest": {
+		"message": "Save and Test"
+	},
+	"invalidServerUrl": {
+		"message": "Enter a URL that starts with https:// or http://."
+	},
+	"serverPermissionDenied": {
+		"message": "Inkling needs access to $ARG1$ to send your text to the server. Allow it when the browser asks, then click \"Save and Test\" again. The setting was not saved.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"checkingOffWithoutServer": {
+		"message": "Checking is off until you set a server."
+	},
+	"couldNotSave": {
+		"message": "Could not save: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"connected": {
+		"message": "Connected: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"generalCard": {
+		"message": "General"
+	},
+	"defaultEnabled": {
+		"message": "Enable on new sites"
+	},
+	"defaultEnabledHelp": {
+		"message": "Can make some apps behave abnormally."
+	},
+	"delay": {
+		"message": "Delay"
+	},
+	"delayHelp": {
+		"message": "Wait this many milliseconds after typing stops before checking the text again."
+	},
+	"delayError": {
+		"message": "Enter a whole number of milliseconds between 0 and 60000."
+	},
+	"activationKey": {
+		"message": "Activation key"
+	},
+	"activationKeyHelp": {
+		"message": "Show highlights only after you press this key twice."
+	},
+	"activationKeyShift": {
+		"message": "Double Shift"
+	},
+	"activationKeyControl": {
+		"message": "Double Control"
+	},
+	"activationKeyOff": {
+		"message": "Off"
+	},
+	"hotkey": {
+		"message": "Apply-suggestion hotkey"
+	},
+	"hotkeyHelp": {
+		"message": "Applies the first suggestion to the last marked word."
+	},
+	"currentHotkey": {
+		"message": "Current hotkey"
+	},
+	"pressKeys": {
+		"message": "Press keys…"
+	},
+	"changeHotkey": {
+		"message": "Change hotkey"
+	},
+	"userDictionary": {
+		"message": "User dictionary"
+	},
+	"userDictionaryHelp": {
+		"message": "One word per line. These words are never marked as spelling mistakes."
+	},
+	"exportDomains": {
+		"message": "Export enabled domains"
+	},
+	"exportDomainsHelp": {
+		"message": "Downloads a JSON list of the sites where checking is on."
+	},
+	"exportJson": {
+		"message": "Export JSON"
+	},
+	"rulesCard": {
+		"message": "Rules"
+	},
+	"disabledRules": {
+		"message": "Disabled rules"
+	},
+	"disabledRulesHelp": {
+		"message": "LanguageTool rule IDs, one per line. \"Disable rule\" in a suggestion adds its rule here."
+	},
+	"ignoredSuggestions": {
+		"message": "Ignored suggestions"
+	},
+	"ignoredSuggestionsHelp": {
+		"message": "Show all suggestions again that you ignored."
+	},
+	"clear": {
+		"message": "Clear"
+	},
+	"cleared": {
+		"message": "Cleared"
+	},
+	"sourceCode": {
+		"message": "Source code and bug reports:"
+	},
+	"noServerTitle": {
+		"message": "No LanguageTool server is set"
+	},
+	"noServerText": {
+		"message": "$ARG1$ to add one.",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"openSettings": {
+		"message": "Open the settings"
+	},
+	"settingsButton": {
+		"message": "Settings"
+	},
+	"cannotCheckPage": {
+		"message": "Inkling cannot check this page"
+	},
+	"checkThisSite": {
+		"message": "Check this site"
+	},
+	"pauseInTab": {
+		"message": "Pause in this tab"
+	},
+	"resumeInTab": {
+		"message": "Resume in this tab"
+	},
+	"statusSiteOff": {
+		"message": "Off for this site"
+	},
+	"statusPaused": {
+		"message": "Paused in this tab"
+	},
+	"statusOn": {
+		"message": "Checking is on"
+	},
+	"cardSuggestions": {
+		"message": "Suggestions"
+	},
+	"cardIgnore": {
+		"message": "Ignore"
+	},
+	"cardClose": {
+		"message": "Close"
+	},
+	"cardAddToDictionary": {
+		"message": "Add to dictionary"
+	},
+	"cardDisableRule": {
+		"message": "Disable rule $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"cardSettings": {
+		"message": "Settings"
+	},
+	"cardRemove": {
+		"message": "Remove"
+	},
+	"cardInsert": {
+		"message": "Insert"
+	},
+	"cardReplaceTitle": {
+		"message": "Replace \"$ARG1$\" with \"$ARG2$\"",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	},
+	"cardRemoveTitle": {
+		"message": "Remove \"$ARG1$\"",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"cardInsertAfterTitle": {
+		"message": "Insert \"$ARG1$\" after \"$ARG2$\"",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			},
+			"arg2": {
+				"content": "$2"
+			}
+		}
+	}
+}

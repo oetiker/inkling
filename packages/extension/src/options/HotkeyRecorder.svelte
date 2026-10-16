@@ -2,6 +2,7 @@
 import { onDestroy } from 'svelte';
 import { Button } from '$lib/components/ui/button/index.js';
 import { Kbd } from '$lib/components/ui/kbd/index.js';
+import { t } from '../i18n';
 import type { Hotkey, Modifier } from '../protocol';
 
 let { hotkey, onchange, id }: { hotkey: Hotkey; onchange: (hotkey: Hotkey) => void; id?: string } =
@@ -44,7 +45,7 @@ onDestroy(stop);
 </script>
 
 <div class="flex items-center gap-2">
-  <span class="flex gap-1" aria-label="Current hotkey">
+  <span class="flex gap-1" aria-label={t('currentHotkey')}>
     {#each [...hotkey.modifiers, hotkey.key] as part}
       <Kbd>{part}</Kbd>
     {/each}
@@ -56,7 +57,7 @@ onDestroy(stop);
     aria-labelledby={id ? `${id}-label ${id}-text` : undefined}
     onclick={recording ? stop : start}
   >
-    <span id={id ? `${id}-text` : undefined}>{recording ? 'Press keys…' : 'Change hotkey'}</span>
+    <span id={id ? `${id}-text` : undefined}>{recording ? t('pressKeys') : t('changeHotkey')}</span>
   </Button>
-  <span class="sr-only" aria-live="polite">{recording ? 'Press keys…' : ''}</span>
+  <span class="sr-only" aria-live="polite">{recording ? t('pressKeys') : ''}</span>
 </div>

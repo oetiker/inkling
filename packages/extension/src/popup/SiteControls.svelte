@@ -4,6 +4,7 @@ import Play from '@lucide/svelte/icons/play';
 import { Button } from '$lib/components/ui/button/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
+import { t } from '../i18n';
 import ProtocolClient from '../ProtocolClient';
 import { checkableHost, type PopupTab } from './currentTab';
 
@@ -65,32 +66,30 @@ async function togglePause() {
 	}
 }
 
-const status = $derived(
-	!enabled ? 'Off for this site' : paused ? 'Paused in this tab' : 'Checking is on',
-);
+const status = $derived(!enabled ? t('statusSiteOff') : paused ? t('statusPaused') : t('statusOn'));
 </script>
 
 {#if host == null}
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-3">
-      <p class="text-muted-foreground text-sm">Inkling cannot check this page</p>
-      <Switch aria-label="Check this site" disabled checked={false} />
+      <p class="text-muted-foreground text-sm">{t('cannotCheckPage')}</p>
+      <Switch aria-label={t('checkThisSite')} disabled checked={false} />
     </div>
-    <Button variant="outline" size="sm" disabled><Pause />Pause in this tab</Button>
+    <Button variant="outline" size="sm" disabled><Pause />{t('pauseInTab')}</Button>
   </div>
 {:else}
   <div class="flex flex-col gap-3">
     <div class="flex items-center justify-between gap-3">
       <div class="flex min-w-0 flex-col">
         <span class="truncate font-medium" title={host}>{shownHost}</span>
-        <Label for="site-switch" class="text-muted-foreground text-xs font-normal">Check this site</Label>
+        <Label for="site-switch" class="text-muted-foreground text-xs font-normal">{t('checkThisSite')}</Label>
       </div>
-      <Switch id="site-switch" aria-label="Check this site" checked={enabled} onCheckedChange={onSiteChange} />
+      <Switch id="site-switch" aria-label={t('checkThisSite')} checked={enabled} onCheckedChange={onSiteChange} />
     </div>
     <p class="text-muted-foreground text-sm" aria-live="polite">{status}</p>
     {#if enabled}
       <Button variant="outline" size="sm" onclick={togglePause}>
-        {#if paused}<Play />Resume in this tab{:else}<Pause />Pause in this tab{/if}
+        {#if paused}<Play />{t('resumeInTab')}{:else}<Pause />{t('pauseInTab')}{/if}
       </Button>
     {/if}
   </div>

@@ -4,6 +4,7 @@ import * as Alert from '$lib/components/ui/alert/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import { Separator } from '$lib/components/ui/separator/index.js';
 import PageHeader from '../components/PageHeader.svelte';
+import { t, tAround } from '../i18n';
 import ProtocolClient from '../ProtocolClient';
 import { currentTab, type PopupTab } from './currentTab';
 import SiteControls from './SiteControls.svelte';
@@ -24,6 +25,8 @@ ProtocolClient.getServerSettings().then((s) => {
 	serverConfigured = s.serverUrl.length > 0;
 });
 
+const [noServerBefore, noServerAfter] = tAround('noServerText');
+
 function openSettings() {
 	ProtocolClient.openOptions();
 }
@@ -35,9 +38,9 @@ function openSettings() {
 
   {#if serverConfigured === false}
     <Alert.Root>
-      <Alert.Title>No LanguageTool server is set</Alert.Title>
+      <Alert.Title>{t('noServerTitle')}</Alert.Title>
       <Alert.Description>
-        <Button variant="link" class="h-auto p-0" onclick={openSettings}>Open the settings</Button> to add one.
+        {noServerBefore}<Button variant="link" class="h-auto p-0" onclick={openSettings}>{t('openSettings')}</Button>{noServerAfter}
       </Alert.Description>
     </Alert.Root>
   {:else if serverConfigured === true && tabLoaded}
@@ -46,7 +49,7 @@ function openSettings() {
 
   <Separator />
   <div class="flex justify-end">
-    <Button variant="ghost" size="sm" onclick={openSettings}><Settings2 />Settings</Button>
+    <Button variant="ghost" size="sm" onclick={openSettings}><Settings2 />{t('settingsButton')}</Button>
   </div>
 </main>
 

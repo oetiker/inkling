@@ -46,7 +46,9 @@ const testHostPermissions = process.env.INKLING_TEST_BUILD === '1' ? ['http://12
 
 export default defineManifest({
 	name: `Inkling${isDev ? ' ➡️ Dev' : ''}`,
-	description: packageData.description,
+	// The name stays Inkling in every language.
+	description: '__MSG_extensionDescription__',
+	default_locale: 'en',
 	version: packageData.version,
 	manifest_version: 3,
 	action: {

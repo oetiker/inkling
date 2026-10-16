@@ -8,26 +8,29 @@ import * as Select from '$lib/components/ui/select/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
 import { Textarea } from '$lib/components/ui/textarea/index.js';
 import PageHeader from '../components/PageHeader.svelte';
+import { t, tAround } from '../i18n';
 import ProtocolClient from '../ProtocolClient';
 import { ActivationKey, type Hotkey } from '../protocol';
 import HotkeyRecorder from './HotkeyRecorder.svelte';
 
 const activationKeyLabels: Record<ActivationKey, string> = {
-	[ActivationKey.Shift]: 'Double Shift',
-	[ActivationKey.Control]: 'Double Control',
-	[ActivationKey.Off]: 'Off',
+	[ActivationKey.Shift]: t('activationKeyShift'),
+	[ActivationKey.Control]: t('activationKeyControl'),
+	[ActivationKey.Off]: t('activationKeyOff'),
 };
 
 /** The names of the settings as the page labels them, for save failures. */
 const settingLabels: Record<string, string> = {
-	delay: 'Delay',
-	defaultEnabled: 'Enable on new sites',
-	activationKey: 'Activation key',
-	hotkey: 'Apply-suggestion hotkey',
-	userDictionary: 'User dictionary',
-	disabledRules: 'Disabled rules',
-	ignoredLints: 'Ignored suggestions',
+	delay: t('delay'),
+	defaultEnabled: t('defaultEnabled'),
+	activationKey: t('activationKey'),
+	hotkey: t('hotkey'),
+	userDictionary: t('userDictionary'),
+	disabledRules: t('disabledRules'),
+	ignoredLints: t('ignoredSuggestions'),
 };
+
+const [publicServerBefore, publicServerAfter] = tAround('publicServerHint');
 
 /** LanguageTool's free server; its limits suit a test, not daily use. */
 const PUBLIC_SERVER_URL = 'https://api.languagetool.org';
@@ -134,7 +137,7 @@ async function saveServer() {
 	if (trimmed.length > 0) {
 		const pattern = originPattern(trimmed);
 		if (pattern == null) {
-			serverStatus = { ok: false, message: 'Enter a URL that starts with https:// or http://.' };
+			serverStatus = { ok: false, message: t('invalidServerUrl') };
 			return;
 		}
 
@@ -149,7 +152,7 @@ async function saveServer() {
 		if (!granted) {
 			serverStatus = {
 				ok: false,
-				message: `Inkling needs access to ${new URL(trimmed).origin} to send your text to the server. Allow it when the browser asks, then click "Save and Test" again. The setting was not saved.`,
+				message: t('serverPermissionDenied', new URL(trimmed).origin),
 			};
 			return;
 		}
@@ -161,11 +164,11 @@ async function saveServer() {
 		serverStatus =
 			trimmed.length > 0
 				? await ProtocolClient.testServer(trimmed)
-				: { ok: true, message: 'Checking is off until you set a server.' };
+				: { ok: true, message: t('checkingOffWithoutServer') };
 	} catch (e) {
 		serverStatus = {
 			ok: false,
-			message: `Could not save: ${e instanceof Error ? e.message : String(e)}`,
+			message: t('couldNotSave', e instanceof Error ? e.message : String(e)),
 		};
 	} finally {
 		serverBusy = false;
@@ -246,74 +249,72 @@ async function exportEnabledDomainsJSON() {
 
 <main class="bg-background text-foreground min-h-screen px-4 py-10">
   <div class="mx-auto flex max-w-2xl flex-col gap-6">
-    <PageHeader subtitle="Settings" />
+    <PageHeader subtitle={t('settingsSubtitle')} />
 
     {#each Object.entries(saveErrors) as [setting, error] (setting)}
       <Alert.Root variant="destructive">
-        <Alert.Description>Could not save "{settingLabels[setting]}": {error}</Alert.Description>
+        <Alert.Description>{t('couldNotSaveSetting', settingLabels[setting], error)}</Alert.Description>
       </Alert.Root>
     {/each}
 
     {#if loadError != null}
       <Alert.Root variant="destructive">
-        <Alert.Description>Could not load the settings: {loadError}</Alert.Description>
+        <Alert.Description>{t('couldNotLoad', loadError)}</Alert.Description>
       </Alert.Root>
     {/if}
 
     <Card.Root>
-      <Card.Header><Card.Title>Server</Card.Title></Card.Header>
+      <Card.Header><Card.Title>{t('serverCard')}</Card.Title></Card.Header>
       <Card.Content class="flex flex-col gap-6">
         <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
-          {@render row('server-url', 'Server URL', 'For example https://lt.example.com or http://localhost:8081. Leave empty to turn checking off.')}
+          {@render row('server-url', t('serverUrl'), t('serverUrlHelp'))}
           <Input id="server-url" placeholder="https://lt.example.com" bind:value={serverUrl} />
         </div>
         {#if loaded && serverUrl.trim().length === 0}
           <div class="flex flex-col gap-2 rounded-lg border p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p class="text-muted-foreground">
-              No server of your own? For a test, use the public server of
-              <a class="text-foreground underline underline-offset-4" href="https://languagetool.org" target="_blank" rel="noreferrer">LanguageTool</a>.
-              It has usage limits, and your text goes to LanguageTool.
+              {publicServerBefore}<a class="text-foreground underline underline-offset-4" href="https://languagetool.org" target="_blank" rel="noreferrer">LanguageTool</a>{publicServerAfter}
             </p>
             <Button variant="outline" size="sm" onclick={() => (serverUrl = PUBLIC_SERVER_URL)}>
-              Use public server
+              {t('usePublicServer')}
             </Button>
           </div>
         {/if}
         <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
-          {@render row('preferred-variants', 'Preferred variants', 'Comma-separated, for example de-CH,en-GB. The server uses them when it detects the language of a text.')}
+          {@render row('preferred-variants', t('preferredVariants'), t('preferredVariantsHelp'))}
           <Input id="preferred-variants" placeholder="de-CH,en-GB" bind:value={preferredVariants} />
         </div>
         {#if serverStatus}
           <Alert.Root variant={serverStatus.ok ? 'default' : 'destructive'}>
             <Alert.Description>
-              {serverStatus.ok ? `Connected: ${serverStatus.message}` : serverStatus.message}
+              {serverStatus.ok ? t('connected', serverStatus.message) : serverStatus.message}
             </Alert.Description>
           </Alert.Root>
         {/if}
         <div class="flex justify-end">
-          <Button disabled={serverBusy} onclick={saveServer}>Save and Test</Button>
+          <Button disabled={serverBusy} onclick={saveServer}>{t('saveAndTest')}</Button>
         </div>
       </Card.Content>
     </Card.Root>
 
     <Card.Root>
-      <Card.Header><Card.Title>General</Card.Title></Card.Header>
+      <Card.Header><Card.Title>{t('generalCard')}</Card.Title></Card.Header>
       <Card.Content class="flex flex-col gap-6">
         <div class="flex items-center justify-between gap-4">
-          {@render row('default-enabled', 'Enable on new sites', 'Can make some apps behave abnormally.')}
+          {@render row('default-enabled', t('defaultEnabled'), t('defaultEnabledHelp'))}
           <Switch id="default-enabled" checked={defaultEnabled} onCheckedChange={onDefaultEnabledChange} />
         </div>
         <div class="grid gap-2 sm:grid-cols-[1fr_10rem] sm:items-start">
-          {@render row('delay', 'Delay', 'Wait this many milliseconds after typing stops before checking the text again.')}
+          {@render row('delay', t('delay'), t('delayHelp'))}
           <div class="flex flex-col gap-1">
             <Input id="delay" type="text" inputmode="numeric" value={delayText} oninput={(e) => onDelayInput(e.currentTarget.value)} aria-invalid={delayError} aria-describedby={delayError ? 'delay-error' : undefined} />
             {#if delayError}
-              <p id="delay-error" class="text-destructive text-sm">Enter a whole number of milliseconds between 0 and 60000.</p>
+              <p id="delay-error" class="text-destructive text-sm">{t('delayError')}</p>
             {/if}
           </div>
         </div>
         <div class="flex items-center justify-between gap-4">
-          {@render row('activation-key', 'Activation key', 'Show highlights only after you press this key twice.')}
+          {@render row('activation-key', t('activationKey'), t('activationKeyHelp'))}
           <Select.Root type="single" value={activationKey} onValueChange={onActivationKeyChange}>
             <Select.Trigger id="activation-key" class="w-44">{activationKeyLabels[activationKey]}</Select.Trigger>
             <Select.Content>
@@ -324,38 +325,38 @@ async function exportEnabledDomainsJSON() {
           </Select.Root>
         </div>
         <div class="flex items-center justify-between gap-4">
-          {@render row('hotkey', 'Apply-suggestion hotkey', 'Applies the first suggestion to the last marked word.')}
+          {@render row('hotkey', t('hotkey'), t('hotkeyHelp'))}
           <HotkeyRecorder id="hotkey" {hotkey} onchange={onHotkeyChange} />
         </div>
         <div class="flex flex-col gap-2">
-          {@render row('user-dictionary', 'User dictionary', 'One word per line. These words are never marked as spelling mistakes.')}
+          {@render row('user-dictionary', t('userDictionary'), t('userDictionaryHelp'))}
           <Textarea id="user-dictionary" rows={6} bind:value={userDict} />
         </div>
         <div class="flex items-center justify-between gap-4">
-          {@render row('export-domains', 'Export enabled domains', 'Downloads a JSON list of the sites where checking is on.')}
-          <Button id="export-domains" variant="outline" onclick={exportEnabledDomainsJSON}>Export JSON</Button>
+          {@render row('export-domains', t('exportDomains'), t('exportDomainsHelp'))}
+          <Button id="export-domains" variant="outline" onclick={exportEnabledDomainsJSON}>{t('exportJson')}</Button>
         </div>
       </Card.Content>
     </Card.Root>
 
     <Card.Root>
-      <Card.Header><Card.Title>Rules</Card.Title></Card.Header>
+      <Card.Header><Card.Title>{t('rulesCard')}</Card.Title></Card.Header>
       <Card.Content class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
-          {@render row('disabled-rules', 'Disabled rules', 'LanguageTool rule IDs, one per line. "Disable rule" in a suggestion adds its rule here.')}
+          {@render row('disabled-rules', t('disabledRules'), t('disabledRulesHelp'))}
           <Textarea id="disabled-rules" rows={6} bind:value={disabledRules} />
         </div>
         <div class="flex items-center justify-between gap-4">
-          {@render row('clear-ignored', 'Ignored suggestions', 'Show all suggestions again that you ignored.')}
+          {@render row('clear-ignored', t('ignoredSuggestions'), t('ignoredSuggestionsHelp'))}
           <Button id="clear-ignored" variant="outline" disabled={ignoredCleared} onclick={clearIgnored}>
-            {ignoredCleared ? 'Cleared' : 'Clear'}
+            {ignoredCleared ? t('cleared') : t('clear')}
           </Button>
         </div>
       </Card.Content>
     </Card.Root>
 
     <footer class="text-muted-foreground text-center text-sm">
-      Source code and bug reports:
+      {t('sourceCode')}
       <a class="text-foreground underline underline-offset-4" href="https://github.com/oetiker/inkling" target="_blank" rel="noreferrer">github.com/oetiker/inkling</a>
     </footer>
   </div>

@@ -6,11 +6,17 @@ import { withExtension } from 'playwright-webextext';
 
 const pathToExtension = path.join(import.meta.dirname, '../build');
 
-const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] }>({
+const test = base.extend<{
+	keepInstallPage: boolean;
+	extraBrowserArgs: string[];
+	uiLocale: string;
+}>({
 	/** Leave open the settings page that a fresh install without a server opens. */
 	keepInstallPage: [false, { option: true }],
 	/** Command line arguments for the browser on top of the configured ones. */
 	extraBrowserArgs: [[], { option: true }],
+	/** The browser's interface language, which picks the extension's texts. Tests match English. */
+	uiLocale: ['en-US', { option: true }],
 	context: async (
 		{
 			playwright,
@@ -20,6 +26,7 @@ const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] 
 			headless,
 			keepInstallPage,
 			extraBrowserArgs,
+			uiLocale,
 		},
 		use,
 		testInfo,
@@ -35,9 +42,17 @@ const test = base.extend<{ keepInstallPage: boolean; extraBrowserArgs: string[] 
 		const context = await browserType.launchPersistentContext(profile, {
 			...contextOptions,
 			...launchOptions,
+			locale: uiLocale,
+			// Chromium on Linux takes its interface language from LANGUAGE, --lang alone is not enough.
+			env: { ...process.env, ...launchOptions.env, LANGUAGE: uiLocale.replace('-', '_') },
+			firefoxUserPrefs: {
+				...launchOptions.firefoxUserPrefs,
+				'intl.locale.requested': uiLocale,
+			},
 			args: [
 				...(launchOptions.args ?? []),
 				...extraBrowserArgs,
+				...(browserName === 'chromium' ? [`--lang=${uiLocale}`] : []),
 				// Without a port of its own, every Firefox would try 6000 and the add-on could be
 				// installed into another worker's browser.
 				...(browserName === 'firefox' ? ['--start-debugger-server', String(await freePort())] : []),
@@ -77,6 +92,17 @@ async function closeInstallPage(context: BrowserContext): Promise<void> {
 	while (Date.now() < deadline) {
 		const page = context.pages().find((p) => p.url().endsWith('/options.html'));
 		if (page != null) {
+			// Let the page mount first. Closed earlier, it has left the extension pages of this
+			// browser with an empty message catalog now and then under load: every
+			// chrome.i18n.getMessage call answered "", even for @@extension_id, so the pages
+			// showed message names instead of texts.
+			await page
+				.waitForFunction(
+					() => (document.getElementById('app')?.childElementCount ?? 0) > 0,
+					undefined,
+					{ timeout: 15000 },
+				)
+				.catch(() => {});
 			// Closing the last tab would close the browser window.
 			await context.newPage();
 			await page.close();
