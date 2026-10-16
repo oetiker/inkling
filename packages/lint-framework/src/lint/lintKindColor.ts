@@ -1,5 +1,4 @@
 import type { LintKind } from './types';
-import { getContrastingTextColor } from './utils';
 
 export type { LintKind } from './types';
 
@@ -54,9 +53,4 @@ export function lintKindFill(lintKindKey: string): string {
 	return `${hex}${Math.round(alpha * 255)
 		.toString(16)
 		.padStart(2, '0')}`;
-}
-
-export function lintKindTextColor(lintKindKeyOrColor: string): 'black' | 'white' {
-	const color = LINT_KIND_COLORS[lintKindKeyOrColor as LintKind] ?? lintKindKeyOrColor;
-	return getContrastingTextColor(color);
 }
