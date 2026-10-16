@@ -47,6 +47,10 @@ export default class PopupHandler {
 		this.renderBox.getShadowHost().popover = 'manual';
 		this.renderBox.getShadowHost().style.pointerEvents = 'none';
 		this.renderBox.getShadowHost().style.border = 'none';
+		// The browser gives a popover a padded Canvas background, centred in the viewport.
+		// The card is positioned on its own, so the host must paint nothing at all.
+		this.renderBox.getShadowHost().style.background = 'transparent';
+		this.renderBox.getShadowHost().style.padding = '0';
 		this.pointerDownCallback = (e) => {
 			this.onPointerDown(e);
 		};

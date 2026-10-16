@@ -112,6 +112,31 @@ test('Escape closes the popup and leaves the caret in the text', async ({
 	await expect(textarea).toHaveValue('Das ist ein Tset.');
 });
 
+test('An open card paints nothing in the middle of the page', async ({
+	browserName,
+	context,
+	page,
+}) => {
+	const { x, y } = await markMistake(browserName, context, page);
+	// A dark page shows any light patch the card leaves behind.
+	await page.evaluate(() => {
+		document.documentElement.style.background = '#1e3a5f';
+	});
+	const viewport = page.viewportSize()!;
+	const middle = {
+		x: viewport.width / 2 - 20,
+		y: viewport.height / 2 - 20,
+		width: 40,
+		height: 40,
+	};
+	const closed = await page.screenshot({ clip: middle });
+
+	await page.mouse.click(x, y);
+	const popup = page.locator('.inkling-popup');
+	await expect(popup).toBeVisible();
+	expect(await page.screenshot({ clip: middle })).toEqual(closed);
+});
+
 test('The close button ignores the mistake', async ({ browserName, context, page }) => {
 	const { x, y } = await markMistake(browserName, context, page);
 	await page.mouse.click(x, y);
