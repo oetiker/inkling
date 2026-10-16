@@ -1,3 +1,4 @@
+- In Chrome, the settings page, the popup or the suggestion card could now and then show internal names such as "saveAndTest" or "cardIgnore" in place of their texts, when the browser handed Inkling no texts. They now show the English texts in that case.
 - When "Export JSON" on the settings page failed, nothing happened and no file was downloaded. The settings page now says "Could not export the enabled domains: …" with the reason.
 - When the popup could not load the server setting, it showed only the logo and the "Settings" button. It now says "Could not load the settings: …" with the reason.
 - Chrome and other Chromium browsers older than version 111 now refuse to install Inkling, instead of installing a version that does not work there.
