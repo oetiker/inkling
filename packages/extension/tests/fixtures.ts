@@ -92,6 +92,17 @@ async function closeInstallPage(context: BrowserContext): Promise<void> {
 	while (Date.now() < deadline) {
 		const page = context.pages().find((p) => p.url().endsWith('/options.html'));
 		if (page != null) {
+			// Let the page mount first. Closed earlier, it has left the extension pages of this
+			// browser with an empty message catalog now and then under load: every
+			// chrome.i18n.getMessage call answered "", even for @@extension_id, so the pages
+			// showed message names instead of texts.
+			await page
+				.waitForFunction(
+					() => (document.getElementById('app')?.childElementCount ?? 0) > 0,
+					undefined,
+					{ timeout: 15000 },
+				)
+				.catch(() => {});
 			// Closing the last tab would close the browser window.
 			await context.newPage();
 			await page.close();
