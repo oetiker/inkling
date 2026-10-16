@@ -87,4 +87,4 @@ async function closeInstallPage(context: BrowserContext): Promise<void> {
 	throw new Error('The install page did not open');
 }
 
-export { test, expect };
+export { expect, test };
