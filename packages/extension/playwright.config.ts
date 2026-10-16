@@ -26,18 +26,20 @@ export default defineConfig({
 	},
 	/** One hour */
 	globalTimeout: 3600000,
+	// Never reuse a server already on these ports: it may belong to another checkout and
+	// serve other pages or another mock. A busy port fails the run instead.
 	webServer: [
 		{
 			command: 'pnpm exec http-server ./tests/pages -p 18081 -a 127.0.0.1',
 			url: 'http://127.0.0.1:18081',
-			reuseExistingServer: true,
+			reuseExistingServer: false,
 			stdout: 'pipe',
 			stderr: 'pipe',
 		},
 		{
 			command: 'node ./tests/mockLanguageTool.mjs 18082',
 			url: 'http://127.0.0.1:18082',
-			reuseExistingServer: true,
+			reuseExistingServer: false,
 			stdout: 'pipe',
 			stderr: 'pipe',
 		},
