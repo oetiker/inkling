@@ -149,6 +149,14 @@
 	"exportDomainsHelp": {
 		"message": "Downloads a JSON list of the sites where checking is on."
 	},
+	"couldNotExport": {
+		"message": "Could not export the enabled domains: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
 	"exportJson": {
 		"message": "Export JSON"
 	},

@@ -149,6 +149,14 @@
 	"exportDomainsHelp": {
 		"message": "Lädt eine JSON-Liste der Websites herunter, auf denen die Prüfung eingeschaltet ist."
 	},
+	"couldNotExport": {
+		"message": "Die eingeschalteten Websites konnten nicht exportiert werden: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
 	"exportJson": {
 		"message": "JSON exportieren"
 	},

@@ -236,6 +236,27 @@ test('A failed save stays visible when another setting saves later', async ({ co
 	await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
+test('A failed export says why', async ({ context }) => {
+	const page = await openOptions(context);
+	await expect(page.getByLabel('Delay')).toHaveValue('500');
+	await page.evaluate(() => {
+		const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+		Object.defineProperty(chrome.runtime, 'sendMessage', {
+			configurable: true,
+			value: async (message: { kind: string }) => {
+				if (message.kind === 'getEnabledDomains') {
+					throw new Error('storage is broken');
+				}
+				return send(message);
+			},
+		});
+	});
+	await page.getByRole('button', { name: 'Export enabled domains' }).click();
+	await expect(page.getByRole('alert')).toContainText(
+		'Could not export the enabled domains: storage is broken',
+	);
+});
+
 test('Options page links to the source code', async ({ context }) => {
 	const page = await openOptions(context);
 	await expect(page.getByRole('link', { name: 'github.com/oetiker/inkling' })).toHaveAttribute(

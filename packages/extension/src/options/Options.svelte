@@ -55,6 +55,7 @@ let hotkey: Hotkey = $state({ modifiers: ['Ctrl'], key: 'e' });
 let userDict = $state('');
 let disabledRules = $state('');
 let ignoredCleared = $state(false);
+let exportError: string | null = $state(null);
 
 Promise.all([
 	ProtocolClient.getServerSettings(),
@@ -221,6 +222,7 @@ async function clearIgnored() {
 }
 
 async function exportEnabledDomainsJSON() {
+	exportError = null;
 	try {
 		const enabledDomains = await ProtocolClient.getEnabledDomains();
 		const blob = new Blob([JSON.stringify(enabledDomains, null, 2)], {
@@ -235,7 +237,7 @@ async function exportEnabledDomainsJSON() {
 		a.remove();
 		URL.revokeObjectURL(url);
 	} catch (e) {
-		console.error('Failed to export enabled domains JSON:', e);
+		exportError = e instanceof Error ? e.message : String(e);
 	}
 }
 </script>
@@ -256,6 +258,12 @@ async function exportEnabledDomainsJSON() {
         <Alert.Description>{t('couldNotSaveSetting', settingLabels[setting], error)}</Alert.Description>
       </Alert.Root>
     {/each}
+
+    {#if exportError != null}
+      <Alert.Root variant="destructive">
+        <Alert.Description>{t('couldNotExport', exportError)}</Alert.Description>
+      </Alert.Root>
+    {/if}
 
     {#if loadError != null}
       <Alert.Root variant="destructive">

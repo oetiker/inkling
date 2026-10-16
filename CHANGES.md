@@ -1,3 +1,4 @@
+- When "Export JSON" on the settings page failed, nothing happened and no file was downloaded. The settings page now says "Could not export the enabled domains: …" with the reason.
 - When the popup could not load the server setting, it showed only the logo and the "Settings" button. It now says "Could not load the settings: …" with the reason.
 - Chrome and other Chromium browsers older than version 111 now refuse to install Inkling, instead of installing a version that does not work there.
 - Inkling now speaks German when the browser's language is German: the suggestion card (for example "Ignorieren", "Zum Wörterbuch hinzufügen", "Regel … ausschalten"), the popup, the settings page and the description in the browser's extension list. All other browser languages get English. The category names and explanations on the suggestion card still come from the LanguageTool server in the language of the checked text.
