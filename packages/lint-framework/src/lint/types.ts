@@ -40,7 +40,7 @@ export type LintKind =
 
 /** Hints that the page gives about the text it asks to check. */
 export interface LintOptions {
-	/** The markup language of the text. Defaults to `markdown`. */
+	/** The markup language of the text. Text without one is checked as plain text. */
 	language?: 'plaintext' | 'markdown' | 'typst';
 	/** Treat the whole text as headings. */
 	forceAllHeadings?: boolean;

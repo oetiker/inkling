@@ -258,6 +258,7 @@ async function handleLint(
 			serverUrl: settings.serverUrl,
 			preferredVariants: settings.preferredVariants,
 			disabledRules: await getDisabledRules(),
+			language: req.options?.language,
 		});
 		return { kind: 'lints', lints: await removeDismissedLints(result.lints) };
 	} catch (error) {

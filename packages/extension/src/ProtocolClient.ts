@@ -58,7 +58,7 @@ export default class ProtocolClient {
 		return JSON.stringify([
 			domain,
 			text,
-			options?.language ?? 'markdown',
+			options?.language ?? 'plaintext',
 			options?.forceAllHeadings ?? false,
 		]);
 	}

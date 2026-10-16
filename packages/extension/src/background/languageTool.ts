@@ -1,9 +1,11 @@
 import {
 	type LintKind,
+	type LintOptions,
 	SuggestionKind,
 	type UnpackedLint,
 	type UnpackedLintGroups,
 } from 'lint-framework';
+import { markdownToAnnotation } from './markdown.ts';
 
 /** The most suggestions shown for one LanguageTool match. */
 const MAX_SUGGESTIONS = 5;
@@ -16,6 +18,8 @@ export type LanguageToolCheckOptions = {
 	/** Comma-separated variants, such as `de-CH,en-US`, used when the language is detected automatically. */
 	preferredVariants: string;
 	disabledRules: string[];
+	/** The markup language of the text; only Markdown is sent with its syntax marked as such. */
+	language?: LintOptions['language'];
 };
 
 export type LanguageToolResult = {
@@ -49,7 +53,13 @@ export async function checkWithLanguageTool(
 	text: string,
 	options: LanguageToolCheckOptions,
 ): Promise<LanguageToolResult> {
-	const body = new URLSearchParams({ text, language: 'auto' });
+	const body = new URLSearchParams({ language: 'auto' });
+	if (options.language === 'markdown') {
+		// The server skips the markup but still counts offsets in the whole string.
+		body.set('data', JSON.stringify({ annotation: markdownToAnnotation(text) }));
+	} else {
+		body.set('text', text);
+	}
 	const variants = options.preferredVariants.trim();
 	if (variants.length > 0) {
 		body.set('preferredVariants', variants);

@@ -120,6 +120,32 @@ test('The close button ignores the mistake', async ({ browserName, context, page
 	await expect(page.locator('#inkling-highlight')).toHaveCount(0);
 });
 
+test('Checks Markdown without its code and marks the right word', async ({
+	browserName,
+	context,
+	page,
+}) => {
+	if (browserName === 'firefox') {
+		test.skip(process.env.LT_DEFAULT_SERVER_URL == null, FIREFOX_SKIP_REASON);
+	} else {
+		await configureServer(context, MOCK_SERVER_URL);
+	}
+	await page.goto('http://localhost:18081/markdown_textarea.html');
+
+	const textarea = page.locator('textarea');
+	await textarea.fill('Ein `Tset` und **Tset** hier.');
+	const highlight = page.locator('#inkling-highlight');
+	await highlight.first().waitFor({ state: 'visible', timeout: 30000 });
+	// The Tset in the code is markup, so only the bold one is marked.
+	await page.waitForTimeout(1500);
+	await expect(highlight).toHaveCount(1);
+
+	const box = (await highlight.first().boundingBox())!;
+	await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+	await page.locator('.inkling-popup').getByRole('menuitem', { name: 'Test', exact: true }).click();
+	await expect(textarea).toHaveValue('Ein `Tset` und **Test** hier.');
+});
+
 test('Shows no highlights when no server is set', async ({ browserName, page }) => {
 	test.skip(browserName === 'firefox', 'Firefox builds for the tests have a server compiled in');
 	await page.goto(TEST_PAGE_URL);

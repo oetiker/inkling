@@ -167,6 +167,61 @@ describe('checkWithLanguageTool', () => {
 		assert.equal(result.lints.GERMAN_SPELLER_RULE.length, 1);
 	});
 
+	it('sends Markdown as annotated data and marks the word in the original text', async () => {
+		const text = '## Ein **Tset**\n\nSiehe [Link](https://x.ch/Tset).';
+		let sentBody = new URLSearchParams();
+		globalThis.fetch = async (_url, init) => {
+			sentBody = init?.body as URLSearchParams;
+			// LanguageTool counts offsets in the original string, markup included.
+			return Response.json({
+				language: { code: 'de-DE' },
+				matches: [match({ offset: text.indexOf('Tset'), length: 4 })],
+			});
+		};
+
+		const result = await checkWithLanguageTool(text, {
+			serverUrl: 'https://lt.example.com',
+			preferredVariants: '',
+			disabledRules: [],
+			language: 'markdown',
+		});
+
+		assert.equal(sentBody.has('text'), false);
+		const data = JSON.parse(sentBody.get('data') ?? '{}');
+		assert.deepEqual(data.annotation.slice(0, 4), [
+			{ markup: '## ' },
+			{ text: 'Ein ' },
+			{ markup: '**' },
+			{ text: 'Tset' },
+		]);
+		assert.equal(
+			data.annotation.map((p: { text?: string; markup?: string }) => p.text ?? p.markup).join(''),
+			text,
+		);
+		const [lint] = result.lints.GERMAN_SPELLER_RULE;
+		assert.equal(lint.problem_text, 'Tset');
+		assert.deepEqual(lint.span, { start: 9, end: 13 });
+	});
+
+	it('sends text of other languages as plain text', async () => {
+		let sentBody = new URLSearchParams();
+		globalThis.fetch = async (_url, init) => {
+			sentBody = init?.body as URLSearchParams;
+			return Response.json({ language: { code: 'en-US' }, matches: [] });
+		};
+
+		for (const language of [undefined, 'plaintext', 'typst'] as const) {
+			await checkWithLanguageTool('**Hello**', {
+				serverUrl: 'https://lt.example.com',
+				preferredVariants: '',
+				disabledRules: [],
+				language,
+			});
+			assert.equal(sentBody.get('text'), '**Hello**');
+			assert.equal(sentBody.has('data'), false);
+		}
+	});
+
 	it('omits empty optional parameters', async () => {
 		let sentBody = new URLSearchParams();
 		globalThis.fetch = async (_url, init) => {
