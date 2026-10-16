@@ -59,8 +59,11 @@ for (const kind of ['contenteditable', 'textarea']) {
 			)
 			.toBeGreaterThan(10);
 
-		// Before the fix this was over 2000 ms; a frame is 16 ms.
-		expect(await medianKeystrokeMs(page)).toBeLessThan(250);
+		// Before the fix this was over 2000 ms; a frame is 16 ms. The test measures wall time,
+		// so a busy machine can push one run up; the printed value shows whether it was that.
+		const median = await medianKeystrokeMs(page);
+		console.log(`Median keystroke in a long ${kind}: ${median.toFixed(1)} ms`);
+		expect(median, `median keystroke ${median.toFixed(1)} ms`).toBeLessThan(250);
 	});
 }
 
