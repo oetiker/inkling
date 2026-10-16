@@ -2,9 +2,7 @@ packages:
   - packages/*
 catalog:
   typescript: ^6.0.3
-  "@types/node": ^24.12.4
-onlyBuiltDependencies:
-  - "@biomejs/biome"
-  - "@parcel/watcher"
-  - esbuild
-  - "@tailwindcss/oxide"
+  "@types/node": ^24.19.2
+allowBuilds:
+  "@biomejs/biome": true
+  "@tailwindcss/oxide": true
