@@ -19,6 +19,9 @@ each block into the matching form field.
 
 ## Summary
 
+AMO only. The Chrome Web Store shows the `description` from the manifest
+(`public/_locales/*/messages.json`, key `extensionDescription`) instead.
+
 English (132 characters at most):
 
 ```text
