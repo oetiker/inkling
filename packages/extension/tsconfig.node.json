@@ -7,6 +7,8 @@
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"strict": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
 		"types": ["node", "chrome"]
 	},
 	"include": ["vite.config.ts", "playwright.config.ts", "src/manifest.ts", "tests/**/*.ts"]

@@ -3,7 +3,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { defineConfig, loadEnv, type PluginOption } from 'vite';
-import manifest from './src/manifest';
+import manifest from './src/manifest.ts';
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), '');
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
 		build: {
 			minify: false,
 			outDir: 'build',
-			rollupOptions: {
+			rolldownOptions: {
 				output: {
 					chunkFileNames: 'assets/chunk-[hash].js',
 				},
@@ -34,7 +34,13 @@ export default defineConfig(({ mode }) => {
 		},
 		plugins: [
 			tailwindcss(),
-			crx({ manifest, browser }) as unknown as PluginOption,
+			crx({
+				manifest,
+				browser,
+				// Google Docs reads the flag this script sets very early, so it must run
+				// as a plain script at document_start, not behind the async loader.
+				contentScripts: { standaloneFiles: ['src/contentScript/googleDocsBootstrap.js'] },
+			}) as unknown as PluginOption,
 			svelte({
 				compilerOptions: {
 					dev: !production,
@@ -43,8 +49,8 @@ export default defineConfig(({ mode }) => {
 		],
 		resolve: {
 			alias: {
-				'@': path.resolve(__dirname, 'src'),
-				$lib: path.resolve(__dirname, 'src/lib'),
+				'@': path.resolve(import.meta.dirname, 'src'),
+				$lib: path.resolve(import.meta.dirname, 'src/lib'),
 			},
 		},
 		legacy: {

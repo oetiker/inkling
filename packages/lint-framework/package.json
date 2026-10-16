@@ -25,10 +25,11 @@
 		"virtual-dom": "^2.1.1"
 	},
 	"devDependencies": {
+		"@microsoft/api-extractor": "^7.59.4",
 		"@types/virtual-dom": "^2.1.4",
 		"type-fest": "^5.10.0",
 		"typescript": "catalog:",
-		"vite": "^6.4.4",
-		"vite-plugin-dts": "^4.5.4"
+		"unplugin-dts": "^1.1.2",
+		"vite": "^8.3.4"
 	}
 }

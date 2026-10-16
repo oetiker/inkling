@@ -6,7 +6,6 @@
 		"allowJs": false,
 		"skipLibCheck": true,
 		"verbatimModuleSyntax": true,
-		"esModuleInterop": false,
 		"allowSyntheticDefaultImports": true,
 		"strict": true,
 		"forceConsistentCasingInFileNames": true,
@@ -16,7 +15,7 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"jsx": "react-jsx",
-		"baseUrl": ".",
+		"types": ["chrome"],
 		"paths": {
 			"$lib": ["./src/lib"],
 			"$lib/*": ["./src/lib/*"]
