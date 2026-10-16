@@ -164,6 +164,33 @@ test('Options page shows the logo and version', async ({ context }) => {
 	expect(await extensionId(context)).toMatch(/^[a-p]{32}$/);
 });
 
+for (const [what, answer] of [
+	['resolves false', 'deny'],
+	['rejects', 'reject'],
+] as const) {
+	test(`A denied server permission says why the server was not saved (request ${what})`, async ({
+		context,
+	}) => {
+		const page = await openOptions(context);
+		// The test build holds the permission already, so act out the user clicking "Deny".
+		await page.evaluate((answer) => {
+			Object.defineProperty(chrome.permissions, 'request', {
+				configurable: true,
+				value: () =>
+					answer === 'deny'
+						? Promise.resolve(false)
+						: Promise.reject(new Error('The permission dialog was closed')),
+			});
+		}, answer);
+		await page.getByLabel('Server URL').fill(MOCK_SERVER_URL);
+		await page.getByRole('button', { name: 'Save and Test' }).click();
+		await expect(page.getByRole('alert')).toContainText(
+			'Inkling needs access to http://127.0.0.1:18082 to send your text to the server.',
+		);
+		expect(await storageGet(context, 'serverSettings')).toBeUndefined();
+	});
+}
+
 test('Options page links to the source code', async ({ context }) => {
 	const page = await openOptions(context);
 	await expect(page.getByRole('link', { name: 'github.com/oetiker/inkling' })).toHaveAttribute(

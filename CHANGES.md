@@ -1,3 +1,4 @@
+- When you answer "Deny" to the browser's question for access to the server after "Save and Test", the settings page now says "Inkling needs access to … to send your text to the server" and that the setting was not saved. Before, in some cases it showed nothing.
 - Turning a site off in the popup now also makes Inkling let go of the text fields it was watching on open pages of that site, and in Google Docs it stops reading the document. Before, this only ended when the tab was reloaded.
 - In Chrome, Google Docs tabs that were open while Inkling was reloaded, updated or turned off kept running a script of Inkling that read the document eight times a second. This script now stops with the rest of Inkling.
 - On sites where Inkling is turned off or paused, it no longer reads the text of each field while you type, which made typing slower on long texts.

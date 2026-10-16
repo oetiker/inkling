@@ -111,12 +111,18 @@ async function saveServer() {
 			return;
 		}
 
-		// Must run first, while the click still counts as a user gesture.
-		const granted = await chrome.permissions.request({ origins: [pattern] });
+		// Must run first, while the click still counts as a user gesture. A denied request
+		// resolves false or, depending on browser and how the prompt was closed, rejects.
+		let granted = false;
+		try {
+			granted = await chrome.permissions.request({ origins: [pattern] });
+		} catch (e) {
+			console.warn('Permission request failed', e);
+		}
 		if (!granted) {
 			serverStatus = {
 				ok: false,
-				message: 'The browser did not grant access to this server. The setting was not saved.',
+				message: `Inkling needs access to ${new URL(trimmed).origin} to send your text to the server. Allow it when the browser asks, then click "Save and Test" again. The setting was not saved.`,
 			};
 			return;
 		}
