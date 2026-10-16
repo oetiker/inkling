@@ -111,7 +111,7 @@
 		"message": "Aktivierungstaste"
 	},
 	"activationKeyHelp": {
-		"message": "Markierungen erst zeigen, wenn Sie diese Taste zweimal drücken."
+		"message": "Zweimal drücken öffnet die Vorschläge zur Markierung, die dem Cursor am nächsten liegt."
 	},
 	"activationKeyShift": {
 		"message": "Zweimal Umschalt"
@@ -126,7 +126,7 @@
 		"message": "Tastenkürzel für Vorschläge"
 	},
 	"hotkeyHelp": {
-		"message": "Übernimmt den ersten Vorschlag für das zuletzt markierte Wort."
+		"message": "Übernimmt den ersten Vorschlag zur Markierung, die dem Cursor am nächsten liegt. Eine Markierung ohne Vorschläge wird ignoriert."
 	},
 	"currentHotkey": {
 		"message": "Aktuelles Tastenkürzel"

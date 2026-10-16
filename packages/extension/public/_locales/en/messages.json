@@ -111,7 +111,7 @@
 		"message": "Activation key"
 	},
 	"activationKeyHelp": {
-		"message": "Show highlights only after you press this key twice."
+		"message": "Press this key twice to open the suggestion card of the mark nearest the cursor."
 	},
 	"activationKeyShift": {
 		"message": "Double Shift"
@@ -126,7 +126,7 @@
 		"message": "Apply-suggestion hotkey"
 	},
 	"hotkeyHelp": {
-		"message": "Applies the first suggestion to the last marked word."
+		"message": "Applies the first suggestion of the mark nearest the cursor. A mark without suggestions is ignored."
 	},
 	"currentHotkey": {
 		"message": "Current hotkey"
