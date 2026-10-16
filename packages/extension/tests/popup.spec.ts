@@ -179,6 +179,29 @@ test('Popup shows a hint when no server is set', async ({ context }) => {
 	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
 });
 
+test('Popup says so when it cannot load the server setting', async ({ context }) => {
+	const a = await context.newPage();
+	await a.goto(`http://localhost:18081/${PAGE}?tab=a`);
+	const id = await tabIdOf(context, '?tab=a');
+	const background = await getBackground(context);
+	// Make the background fail to read the server setting, as a broken storage would.
+	await background.evaluate(() => {
+		const get = chrome.storage.local.get.bind(chrome.storage.local);
+		Object.defineProperty(chrome.storage.local, 'get', {
+			configurable: true,
+			value: (keys: unknown) =>
+				keys != null && typeof keys === 'object' && 'serverSettings' in keys
+					? Promise.reject(new Error('storage is broken'))
+					: get(keys as string),
+		});
+	});
+	const popup = await openPopupFor(context, id);
+	await expect(popup.getByRole('alert')).toContainText(
+		'Could not load the settings: storage is broken',
+	);
+	await expect(popup.getByRole('switch', { name: 'Check this site' })).toHaveCount(0);
+});
+
 test('Popup cannot act on about:blank', async ({ context }) => {
 	await setupServer(context);
 	const blank = await context.newPage();

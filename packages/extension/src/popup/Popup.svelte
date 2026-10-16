@@ -12,6 +12,7 @@ import SiteControls from './SiteControls.svelte';
 let tab: PopupTab | undefined = $state();
 let tabLoaded = $state(false);
 let serverConfigured: boolean | null = $state(null);
+let loadError: string | null = $state(null);
 
 // A tab that cannot be read counts as unknown, which shows the cannot-check state.
 currentTab()
@@ -21,9 +22,13 @@ currentTab()
 		tabLoaded = true;
 	});
 
-ProtocolClient.getServerSettings().then((s) => {
-	serverConfigured = s.serverUrl.length > 0;
-});
+ProtocolClient.getServerSettings()
+	.then((s) => {
+		serverConfigured = s.serverUrl.length > 0;
+	})
+	.catch((e) => {
+		loadError = e instanceof Error ? e.message : String(e);
+	});
 
 const [noServerBefore, noServerAfter] = tAround('noServerText');
 
@@ -36,7 +41,11 @@ function openSettings() {
   <PageHeader />
   <Separator />
 
-  {#if serverConfigured === false}
+  {#if loadError != null}
+    <Alert.Root variant="destructive">
+      <Alert.Description>{t('couldNotLoad', loadError)}</Alert.Description>
+    </Alert.Root>
+  {:else if serverConfigured === false}
     <Alert.Root>
       <Alert.Title>{t('noServerTitle')}</Alert.Title>
       <Alert.Description>
