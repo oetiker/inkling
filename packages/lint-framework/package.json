@@ -21,7 +21,7 @@
 		"test": "echo 'no tests'"
 	},
 	"dependencies": {
-		"colorjs.io": "^0.5.2",
+		"colorjs.io": "^0.7.1",
 		"virtual-dom": "^2.1.1"
 	},
 	"devDependencies": {
