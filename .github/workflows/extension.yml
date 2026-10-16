@@ -10,6 +10,9 @@ on:
 jobs:
   extension:
     runs-on: ubuntu-latest
+    # The repository gives workflow tokens read access only; the release step needs to write.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7.0.1
       # Installs the pnpm version pinned in package.json's packageManager field.
