@@ -46,16 +46,29 @@ LT_DEFAULT_SERVER_URL=https://lt.example.com make chrome
 
 - `Server URL`: Base URL of the LanguageTool server, for example
   `https://lt.example.com` or `http://localhost:8081`. Empty turns checking off.
-  Saving asks the browser for access to that server.
-- `Preferred Variants`: Comma-separated variants such as `de-CH,en-GB`. The
+  `Save and Test` asks the browser for access to that server. While the field
+  is empty, `Use public server` fills in `https://api.languagetool.org`.
+- `Preferred variants`: Comma-separated variants such as `de-CH,en-GB`. The
   server uses them when it detects the language of a text.
-- `Enable on New Sites by Default`: Off by default. Checking runs only on the
-  sites in the built-in list and on sites you switch on in the popup.
+- `Enable on new sites`: Off by default. Checking then runs only on the sites
+  in the built-in list, on WordPress and Substack sites, and on sites you
+  switch on in the popup. When on, checking runs on every site you have not
+  switched off in the popup.
 - `Delay`: Milliseconds to wait after typing stops before the text is sent to
-  the server. Default 500.
-- `Disabled Rules`: LanguageTool rule IDs, one per line. "Disable rule" in a
+  the server, from 0 to 60000. Default 500.
+- `Activation key`: With `Double Shift` or `Double Control`, pressing that key
+  twice opens the suggestion card of the mark nearest the cursor and moves the
+  keyboard into it. Default `Off`.
+- `Apply-suggestion hotkey`: Applies the first suggestion of the mark nearest
+  the cursor, or ignores the mark when it has no suggestion. Default Ctrl+E.
+- `User dictionary`: Words that are never marked as spelling mistakes, one per
+  line.
+- `Export enabled domains`: `Export JSON` downloads a list of the sites that
+  are switched on. Sites in the built-in list are only in it when you switched
+  them on yourself.
+- `Disabled rules`: LanguageTool rule IDs, one per line. "Disable rule" in a
   suggestion adds its rule here.
-- `User Dictionary`: Words that are never marked as spelling mistakes.
+- `Ignored suggestions`: `Clear` shows all suggestions you ignored again.
 
 ## Development
 
