@@ -1,7 +1,7 @@
 # Inkling
 
-Inkling is a Chrome and Firefox extension that checks what you type on web pages with
-your own [LanguageTool](https://github.com/languagetool-org/languagetool)
+Inkling is a Chrome and Firefox extension that checks spelling and grammar in
+your web browser with your own [LanguageTool](https://github.com/languagetool-org/languagetool)
 server. Text goes only to the server you configure.
 
 This project is not affiliated with LanguageTooler GmbH or with Automattic.

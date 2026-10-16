@@ -25,13 +25,13 @@ AMO only. The Chrome Web Store shows the `description` from the manifest
 English (132 characters at most):
 
 ```text
-Checks spelling, grammar and style as you type on any web page, with a LanguageTool server you choose. No account, no tracking.
+Spelling, grammar and style checks in your web browser, with a LanguageTool server you choose. No account, no tracking.
 ```
 
 German:
 
 ```text
-Prüft Rechtschreibung, Grammatik und Stil beim Schreiben auf Webseiten, mit einem LanguageTool-Server Ihrer Wahl. Ohne Konto.
+Rechtschreib-, Grammatik- und Stilprüfung in Ihrem Webbrowser, mit einem LanguageTool-Server Ihrer Wahl. Ohne Konto.
 ```
 
 ## Description
@@ -39,7 +39,7 @@ Prüft Rechtschreibung, Grammatik und Stil beim Schreiben auf Webseiten, mit ein
 English:
 
 ```text
-Inkling marks spelling, grammar and style mistakes while you write in text fields on web pages: web mail, chat, social media, issue trackers, Google Docs and most rich text editors. Click a marked word to see the explanation and the suggestions; one more click applies a suggestion.
+Inkling checks spelling, grammar and style in your web browser. It marks mistakes while you write in web mail, chat, social media, issue trackers, Google Docs and most rich text editors. Click a marked word to see the explanation and the suggestions; one more click applies a suggestion.
 
 The checks come from a LanguageTool server that you set on the settings page. Run your own server (it is open source and runs on a laptop or a small server), use the one your team runs, or try the public server of LanguageTool. Inkling sends your text to that server and nowhere else. It works with every language that LanguageTool checks, among them English, German, French, Spanish, Dutch and Portuguese.
 
@@ -61,7 +61,7 @@ Source code: https://github.com/oetiker/inkling
 German:
 
 ```text
-Inkling markiert Rechtschreib-, Grammatik- und Stilfehler, während Sie in Textfeldern auf Webseiten schreiben: in Webmail, Chats, sozialen Medien, Issue-Trackern, Google Docs und den meisten Editoren für formatierten Text. Ein Klick auf ein markiertes Wort zeigt die Erklärung und die Vorschläge; ein weiterer Klick übernimmt einen Vorschlag.
+Inkling prüft Rechtschreibung, Grammatik und Stil in Ihrem Webbrowser. Es markiert Fehler, während Sie schreiben: in Webmail, Chats, sozialen Medien, Issue-Trackern, Google Docs und den meisten Editoren für formatierten Text. Ein Klick auf ein markiertes Wort zeigt die Erklärung und die Vorschläge; ein weiterer Klick übernimmt einen Vorschlag.
 
 Die Prüfung macht ein LanguageTool-Server, den Sie in den Einstellungen festlegen. Betreiben Sie Ihren eigenen Server (er ist quelloffen und läuft auf einem Laptop oder einem kleinen Server), nutzen Sie den Server Ihres Teams, oder testen Sie mit dem öffentlichen Server von LanguageTool. Inkling sendet Ihren Text an diesen Server und an keine andere Stelle. Inkling prüft alle Sprachen, die LanguageTool prüft, darunter Deutsch, Englisch, Französisch, Spanisch, Niederländisch und Portugiesisch.
 
