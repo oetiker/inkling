@@ -699,15 +699,14 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 			return normalizeGoogleDocsText(nextAnnotated?.getText?.()) === expectedNextText;
 		};
 
-		const dataTransfer = new DataTransfer();
-		dataTransfer.setData('text/plain', replacementText);
-		target.dispatchEvent(
-			new ClipboardEvent('paste', {
-				clipboardData: dataTransfer,
-				cancelable: true,
-				bubbles: true,
-			}),
-		);
+		const pasteEvent = new ClipboardEvent('paste', {
+			clipboardData: new DataTransfer(),
+			cancelable: true,
+			bubbles: true,
+		});
+		// Firefox gives the event an empty DataTransfer of its own; set the text on that one.
+		pasteEvent.clipboardData?.setData('text/plain', replacementText);
+		target.dispatchEvent(pasteEvent);
 
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		const applied = await didApplyReplacement();

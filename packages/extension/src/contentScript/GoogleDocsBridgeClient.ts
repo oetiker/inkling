@@ -199,7 +199,12 @@ export default class GoogleDocsBridgeClient {
 			}, this.requestTimeoutMs);
 
 			this.pending.set(requestId, { resolve, reject, timeoutId });
-			this.documentRef.dispatchEvent(new CustomEvent(EVENT_REQUEST, { detail: requestMessage }));
+			// In Firefox the page script cannot read an object made in the content script.
+			const detail =
+				typeof cloneInto === 'function' && this.documentRef.defaultView != null
+					? cloneInto(requestMessage, this.documentRef.defaultView)
+					: requestMessage;
+			this.documentRef.dispatchEvent(new CustomEvent(EVENT_REQUEST, { detail }));
 		});
 	}
 
