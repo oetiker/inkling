@@ -130,6 +130,7 @@ import { GoogleDocsBridgeRequestHandler } from './google-docs-bridge-request-han
 		return Number.isFinite(number) ? number : null;
 	}
 
+	/** @returns {SelectionEndpoints | null} */
 	function getSelectionEndpoints(selection) {
 		if (!selection || typeof selection !== 'object') {
 			return null;

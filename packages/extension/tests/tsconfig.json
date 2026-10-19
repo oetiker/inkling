@@ -1,0 +1,5 @@
+{
+	// Editors take the nearest tsconfig.json; the tests need the Node types of tsconfig.node.json.
+	"extends": "../tsconfig.node.json",
+	"include": ["**/*.ts"]
+}
