@@ -144,33 +144,6 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 		return nextHash;
 	}
 
-	function normalizeGoogleDocsRectLabel(label: string): string {
-		const parts = label.split(' ');
-		let normalized = '';
-
-		for (let index = 0; index < parts.length; index += 1) {
-			const part = parts[index];
-			if (part === '') {
-				normalized += '\u00a0';
-				continue;
-			}
-
-			normalized += part;
-			if (index === parts.length - 1) {
-				continue;
-			}
-
-			const keepTightRight = /[(["'“‘/_`-]$/u.test(part);
-			const keepTightLeft = /^[)\]"'”’/_`—–-]/u.test(parts[index + 1] ?? '');
-
-			if (!keepTightRight && !keepTightLeft) {
-				normalized += ' ';
-			}
-		}
-
-		return normalized;
-	}
-
 	function isStandaloneListMarker(text: string): boolean {
 		return /^((\d+|[a-zA-Z]|[ivxlcdmIVXLCDM]+)[.)]|[-+*•◦▪‣●☐☑☒])$/u.test(text.trim());
 	}
@@ -253,13 +226,9 @@ export function createGoogleDocsBridgeSync(fw: LintFramework): {
 		for (const rectNode of Array.from(
 			editor.querySelectorAll<SVGRectElement>(GOOGLE_DOCS_RECT_SELECTOR),
 		)) {
-			const rawLabel = rectNode.getAttribute('aria-label');
-			if (!rawLabel) {
-				continue;
-			}
-
-			const text = normalizeGoogleDocsRectLabel(rawLabel);
-			if (text.length === 0) {
+			// The label holds the drawn text with all its spaces, as in the document.
+			const text = rectNode.getAttribute('aria-label');
+			if (!text) {
 				continue;
 			}
 
