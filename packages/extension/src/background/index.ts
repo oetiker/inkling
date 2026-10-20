@@ -1,5 +1,12 @@
 import type { UnpackedLintGroups } from 'lint-framework';
 import {
+	DEFAULT_LANGUAGE_SETTINGS,
+	type LanguageSettings,
+	type ServerLanguage,
+	variantsFromList,
+	variantsFromLocales,
+} from '../languages';
+import {
 	ActivationKey,
 	type AddToUserDictionaryRequest,
 	createErrorResponse,
@@ -14,6 +21,8 @@ import {
 	type GetDomainStatusResponse,
 	type GetEnabledDomainsResponse,
 	type GetHotkeyResponse,
+	type GetLanguageSettingsResponse,
+	type GetServerLanguagesResponse,
 	type GetServerSettingsResponse,
 	type GetTabPausedRequest,
 	type GetTabPausedResponse,
@@ -33,6 +42,7 @@ import {
 	type SetDisabledRulesRequest,
 	type SetDomainStatusRequest,
 	type SetHotkeyRequest,
+	type SetLanguageSettingsRequest,
 	type SetRuleEnabledRequest,
 	type SetServerSettingsRequest,
 	type SetTabPausedRequest,
@@ -42,11 +52,14 @@ import {
 	type UnitResponse,
 } from '../protocol';
 import { domainLookupCandidates, domainWriteTarget } from './domainKeys';
-import { checkWithLanguageTool, fetchServerVersion } from './languageTool';
+import { checkWithLanguageTool, fetchServerLanguages, fetchServerVersion } from './languageTool';
 import { clearTabPause, endTabPauseAt, isTabPaused, setTabPaused } from './tabPause';
 
 /** Wait this long after typing stops before checking, unless the user picks another delay. */
 const DEFAULT_DELAY_MS = 500;
+
+/** Ask the server for its languages again after this many milliseconds. */
+const LANGUAGES_TTL_MS = 10 * 60_000;
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 	// Answer a failure too, otherwise the caller waits forever.
@@ -152,6 +165,12 @@ function handleRequest(message: Request, sender?: chrome.runtime.MessageSender):
 			return handleSetServerSettings(message);
 		case 'testServer':
 			return handleTestServer(message);
+		case 'getLanguageSettings':
+			return handleGetLanguageSettings();
+		case 'setLanguageSettings':
+			return handleSetLanguageSettings(message);
+		case 'getServerLanguages':
+			return handleGetServerLanguages();
 		case 'getDisabledRules':
 			return handleGetDisabledRules();
 		case 'setDisabledRules':
@@ -256,7 +275,7 @@ async function handleLint(
 	try {
 		const result = await checkWithLanguageTool(req.text, {
 			serverUrl: settings.serverUrl,
-			preferredVariants: settings.preferredVariants,
+			languageSettings: await getLanguageSettings(settings.serverUrl),
 			disabledRules: await getDisabledRules(),
 			language: req.options?.language,
 		});
@@ -328,13 +347,34 @@ async function handleGetServerSettings(): Promise<GetServerSettingsResponse> {
 }
 
 async function handleSetServerSettings(req: SetServerSettingsRequest): Promise<UnitResponse> {
-	await chrome.storage.local.set({
-		serverSettings: {
-			serverUrl: req.settings.serverUrl.trim(),
-			preferredVariants: req.settings.preferredVariants.trim(),
-		},
-	});
+	await legacyVariantsMoved;
+	await chrome.storage.local.set({ serverSettings: { serverUrl: req.settings.serverUrl.trim() } });
 	return createUnitResponse();
+}
+
+async function handleGetLanguageSettings(): Promise<GetLanguageSettingsResponse> {
+	const { serverUrl } = await getServerSettings();
+	return { kind: 'getLanguageSettings', settings: await getLanguageSettings(serverUrl) };
+}
+
+async function handleSetLanguageSettings(req: SetLanguageSettingsRequest): Promise<UnitResponse> {
+	const { variants, preferredLanguages, motherTongue, picky } = req.settings;
+	const languageSettings: LanguageSettings = {
+		variants: Object.fromEntries(Object.entries(variants).filter(([, v]) => v.length > 0)),
+		preferredLanguages: [...new Set(preferredLanguages)],
+		motherTongue,
+		picky,
+	};
+	await chrome.storage.local.set({ languageSettings });
+	return createUnitResponse();
+}
+
+async function handleGetServerLanguages(): Promise<GetServerLanguagesResponse> {
+	const { serverUrl } = await getServerSettings();
+	if (serverUrl.trim().length === 0) {
+		return { kind: 'getServerLanguages', languages: [] };
+	}
+	return { kind: 'getServerLanguages', languages: await getServerLanguages(serverUrl) };
 }
 
 async function handleTestServer(req: TestServerRequest): Promise<TestServerResponse> {
@@ -485,9 +525,72 @@ async function handleSetHotkey(req: SetHotkeyRequest): Promise<UnitResponse> {
 
 async function getServerSettings(): Promise<ServerSettings> {
 	const resp = await chrome.storage.local.get<{ serverSettings: ServerSettings }>({
-		serverSettings: { serverUrl: __DEFAULT_SERVER_URL__, preferredVariants: '' },
+		serverSettings: { serverUrl: __DEFAULT_SERVER_URL__ },
 	});
-	return resp.serverSettings;
+	return { serverUrl: resp.serverSettings.serverUrl };
+}
+
+/** The server's language list per server URL, with the time it was asked for. */
+const serverLanguages = new Map<string, { at: number; languages: Promise<ServerLanguage[]> }>();
+
+/** The languages `serverUrl` knows, asked for at most every few minutes. */
+function getServerLanguages(serverUrl: string): Promise<ServerLanguage[]> {
+	const cached = serverLanguages.get(serverUrl);
+	if (cached != null && Date.now() - cached.at < LANGUAGES_TTL_MS) {
+		return cached.languages;
+	}
+	const languages = fetchServerLanguages(serverUrl);
+	serverLanguages.set(serverUrl, { at: Date.now(), languages });
+	// Ask again next time rather than keep a failure for minutes.
+	languages.catch(() => serverLanguages.delete(serverUrl));
+	return languages;
+}
+
+/**
+ * Up to 0.1.1 the variants were a comma-separated text in the server settings.
+ * Move a non-empty one to the language settings, once.
+ */
+async function moveLegacyVariants(): Promise<void> {
+	const { serverSettings, languageSettings } = await chrome.storage.local.get<{
+		serverSettings?: { serverUrl: string; preferredVariants?: string };
+		languageSettings?: LanguageSettings;
+	}>(['serverSettings', 'languageSettings']);
+	const legacy = serverSettings?.preferredVariants;
+	if (legacy == null) {
+		return;
+	}
+	const update: Record<string, unknown> = {
+		serverSettings: { serverUrl: serverSettings!.serverUrl },
+	};
+	if (languageSettings == null && legacy.trim().length > 0) {
+		update.languageSettings = { ...DEFAULT_LANGUAGE_SETTINGS, variants: variantsFromList(legacy) };
+	}
+	await chrome.storage.local.set(update);
+}
+
+const legacyVariantsMoved = moveLegacyVariants().catch((error) =>
+	console.error('Could not move the old language variants', error),
+);
+
+/**
+ * The language settings the user saved. Until then, the variants follow the browser's
+ * languages, as far as `serverUrl` knows them.
+ */
+async function getLanguageSettings(serverUrl: string): Promise<LanguageSettings> {
+	await legacyVariantsMoved;
+	const { languageSettings } = await chrome.storage.local.get<{
+		languageSettings?: Partial<LanguageSettings>;
+	}>('languageSettings');
+	if (languageSettings != null) {
+		return { ...DEFAULT_LANGUAGE_SETTINGS, ...languageSettings };
+	}
+	let variants: Record<string, string> = {};
+	try {
+		variants = variantsFromLocales(navigator.languages, await getServerLanguages(serverUrl));
+	} catch {
+		// Without the list no variant is safe to send; the server rejects unknown ones.
+	}
+	return { ...DEFAULT_LANGUAGE_SETTINGS, variants };
 }
 
 async function getDisabledRules(): Promise<string[]> {

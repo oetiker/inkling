@@ -264,3 +264,66 @@ test('Options page links to the source code', async ({ context }) => {
 		'https://github.com/oetiker/inkling',
 	);
 });
+
+test.describe('language settings', () => {
+	test('Without a server the language card asks for one', async ({ context }) => {
+		const page = await openOptions(context);
+		await expect(
+			page.getByText('Inkling reads the available languages from the server. Save a server first.'),
+		).toBeVisible();
+		await expect(page.locator('#variant-de')).toHaveCount(0);
+	});
+
+	test('Variants follow the browser until changed, and the check sends the settings', async ({
+		context,
+	}) => {
+		await storageSet(context, { serverSettings: { serverUrl: MOCK_SERVER_URL } });
+		const page = await openOptions(context);
+		// Playwright's Chromium speaks en-US; the server knows that variant.
+		await expect(page.locator('#variant-en')).toHaveText('American English (en-US)');
+		await expect(page.locator('#variant-de')).toHaveText('Server default');
+		expect(await storageGet(context, 'languageSettings')).toBeUndefined();
+
+		await page.locator('#variant-de').click();
+		await page.getByRole('option', { name: 'Swiss High German (de-CH)' }).click();
+		await page
+			.getByRole('group', { name: 'Preferred languages' })
+			.getByRole('button', { name: 'German', exact: true })
+			.click();
+		await page.locator('#mother-tongue').click();
+		await page.getByRole('option', { name: 'French', exact: true }).click();
+		await page.getByRole('switch', { name: 'Picky mode' }).click();
+		await expect
+			.poll(() => storageGet(context, 'languageSettings'))
+			.toEqual({
+				variants: { de: 'de-CH', en: 'en-US' },
+				preferredLanguages: ['de'],
+				motherTongue: 'fr',
+				picky: true,
+			});
+
+		await page.reload();
+		await expect(page.locator('#variant-de')).toHaveText('Swiss High German (de-CH)');
+		await expect(
+			page
+				.getByRole('group', { name: 'Preferred languages' })
+				.getByRole('button', { name: 'German', exact: true }),
+		).toHaveAttribute('aria-pressed', 'true');
+
+		const tab = await context.newPage();
+		await tab.goto('http://localhost:18081/simple_textarea.html');
+		const text = 'Die Sprache dieses Tset.';
+		await tab.locator('textarea').fill(text);
+		await expect(tab.locator('#inkling-highlight').first()).toBeVisible({ timeout: 30000 });
+		const sent = await (
+			await fetch(`${MOCK_SERVER_URL}/last-check?text=${encodeURIComponent(text)}`)
+		).json();
+		expect(sent).toMatchObject({
+			language: 'auto',
+			preferredVariants: 'de-CH,en-US',
+			preferredLanguages: 'de',
+			motherTongue: 'fr',
+			level: 'picky',
+		});
+	});
+});

@@ -9,6 +9,13 @@ import { Switch } from '$lib/components/ui/switch/index.js';
 import { Textarea } from '$lib/components/ui/textarea/index.js';
 import PageHeader from '../components/PageHeader.svelte';
 import { t, tAround } from '../i18n';
+import {
+	DEFAULT_LANGUAGE_SETTINGS,
+	type LanguageSettings,
+	languageCodes,
+	type ServerLanguage,
+	variantChoices,
+} from '../languages';
 import ProtocolClient from '../ProtocolClient';
 import { ActivationKey, type Hotkey } from '../protocol';
 import HotkeyRecorder from './HotkeyRecorder.svelte';
@@ -27,6 +34,7 @@ const settingLabels: Record<string, string> = {
 	hotkey: t('hotkey'),
 	userDictionary: t('userDictionary'),
 	disabledRules: t('disabledRules'),
+	languageSettings: t('languageCard'),
 	ignoredLints: t('ignoredSuggestions'),
 };
 
@@ -36,7 +44,8 @@ const [publicServerBefore, publicServerAfter] = tAround('publicServerHint');
 const PUBLIC_SERVER_URL = 'https://api.languagetool.org';
 
 let serverUrl = $state('');
-let preferredVariants = $state('');
+/** The server URL as saved, which the language list belongs to. */
+let savedServerUrl = $state('');
 let serverStatus: { ok: boolean; message: string } | null = $state(null);
 let serverBusy = $state(false);
 
@@ -57,6 +66,84 @@ let disabledRules = $state('');
 let ignoredCleared = $state(false);
 let exportError: string | null = $state(null);
 
+/** Select values for "no variant" and "no mother tongue"; a select item cannot be empty. */
+const NONE = 'none';
+
+let languageSettings: LanguageSettings = $state(DEFAULT_LANGUAGE_SETTINGS);
+let serverLanguages: ServerLanguage[] = $state([]);
+let languagesError: string | null = $state(null);
+
+const displayNames = new Intl.DisplayNames([chrome.i18n.getUILanguage()], { type: 'language' });
+
+/** The language's name in the interface language, or the server's English name. */
+function languageName(code: string): string {
+	try {
+		const name = displayNames.of(code);
+		if (name != null && name !== code) {
+			return name;
+		}
+	} catch {
+		// Not a code the browser knows.
+	}
+	return serverLanguages.find((l) => l.code === code)?.name ?? code;
+}
+
+/**
+ * A variant's name and code. Only a plain language-region code is named by the browser;
+ * for others, such as ca-ES-valencia, the browser's guess is worse than the server's name.
+ */
+function variantLabel(longCode: string): string {
+	let name: string | undefined;
+	if (/^[a-z]{2,3}-[A-Z]{2}$/.test(longCode)) {
+		try {
+			name = displayNames.of(longCode);
+		} catch {
+			// Fall back to the server's name.
+		}
+	}
+	name ??= serverLanguages.find((l) => l.longCode === longCode)?.name ?? longCode;
+	return `${name} (${longCode})`;
+}
+
+function byName(codes: string[]): string[] {
+	return codes.toSorted((a, b) => languageName(a).localeCompare(languageName(b)));
+}
+
+const choices = $derived(variantChoices(serverLanguages));
+const variantCodes = $derived(byName(Object.keys(choices)));
+const allCodes = $derived(byName(languageCodes(serverLanguages)));
+
+async function loadLanguages() {
+	languagesError = null;
+	try {
+		serverLanguages = await ProtocolClient.getServerLanguages();
+	} catch (e) {
+		serverLanguages = [];
+		languagesError = e instanceof Error ? e.message : String(e);
+	}
+}
+
+function saveLanguageSettings(next: LanguageSettings) {
+	languageSettings = next;
+	void save('languageSettings', ProtocolClient.setLanguageSettings(next));
+}
+
+function onVariantChange(code: string, value: string) {
+	const variants = { ...languageSettings.variants };
+	if (value === NONE) {
+		delete variants[code];
+	} else {
+		variants[code] = value;
+	}
+	saveLanguageSettings({ ...languageSettings, variants });
+}
+
+function togglePreferred(code: string) {
+	const list = languageSettings.preferredLanguages;
+	const preferredLanguages = list.includes(code) ? list.filter((c) => c !== code) : [...list, code];
+	saveLanguageSettings({ ...languageSettings, preferredLanguages });
+}
+
 Promise.all([
 	ProtocolClient.getServerSettings(),
 	ProtocolClient.getDefaultEnabled(),
@@ -65,10 +152,12 @@ Promise.all([
 	ProtocolClient.getHotkey(),
 	ProtocolClient.getUserDictionary(),
 	ProtocolClient.getDisabledRules(),
+	ProtocolClient.getLanguageSettings(),
 ])
-	.then(([server, enabled, delay, key, hk, dict, rules]) => {
+	.then(([server, enabled, delay, key, hk, dict, rules, language]) => {
 		serverUrl = server.serverUrl;
-		preferredVariants = server.preferredVariants;
+		savedServerUrl = server.serverUrl;
+		languageSettings = language;
 		defaultEnabled = enabled;
 		delayText = String(delay);
 		activationKey = key;
@@ -76,6 +165,9 @@ Promise.all([
 		userDict = listToString(dict.toSorted());
 		disabledRules = listToString(rules);
 		loaded = true;
+		if (savedServerUrl.trim().length > 0) {
+			void loadLanguages();
+		}
 	})
 	.catch((e) => {
 		// Leave `loaded` false so the dictionary and rules effects never save the defaults.
@@ -161,7 +253,13 @@ async function saveServer() {
 
 	serverBusy = true;
 	try {
-		await ProtocolClient.setServerSettings({ serverUrl: trimmed, preferredVariants });
+		await ProtocolClient.setServerSettings({ serverUrl: trimmed });
+		savedServerUrl = trimmed;
+		serverLanguages = [];
+		languagesError = null;
+		if (trimmed.length > 0) {
+			void loadLanguages();
+		}
 		serverStatus =
 			trimmed.length > 0
 				? await ProtocolClient.testServer(trimmed)
@@ -288,10 +386,6 @@ async function exportEnabledDomainsJSON() {
             </Button>
           </div>
         {/if}
-        <div class="grid gap-2 sm:grid-cols-[1fr_18rem] sm:items-center">
-          {@render row('preferred-variants', t('preferredVariants'), t('preferredVariantsHelp'))}
-          <Input id="preferred-variants" placeholder="de-CH,en-GB" bind:value={preferredVariants} />
-        </div>
         {#if serverStatus}
           <Alert.Root variant={serverStatus.ok ? 'default' : 'destructive'}>
             <Alert.Description>
@@ -301,6 +395,86 @@ async function exportEnabledDomainsJSON() {
         {/if}
         <div class="flex justify-end">
           <Button disabled={serverBusy} onclick={saveServer}>{t('saveAndTest')}</Button>
+        </div>
+      </Card.Content>
+    </Card.Root>
+
+    <Card.Root>
+      <Card.Header><Card.Title>{t('languageCard')}</Card.Title></Card.Header>
+      <Card.Content class="flex flex-col gap-6">
+        {#if savedServerUrl.trim().length === 0}
+          <p class="text-muted-foreground text-sm">{t('languagesNeedServer')}</p>
+        {:else if languagesError != null}
+          <Alert.Root variant="destructive">
+            <Alert.Description>{t('couldNotLoadLanguages', languagesError)}</Alert.Description>
+          </Alert.Root>
+        {/if}
+        {#if variantCodes.length > 0}
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+              <h3 class="text-sm leading-none font-medium">{t('languageVariants')}</h3>
+              <p class="text-muted-foreground text-sm">{t('languageVariantsHelp')}</p>
+            </div>
+            {#each variantCodes as code (code)}
+              {@const value = languageSettings.variants[code] ?? NONE}
+              <div class="flex items-center justify-between gap-4">
+                <Label id="variant-{code}-label" for="variant-{code}">{languageName(code)}</Label>
+                <Select.Root type="single" {value} onValueChange={(v) => onVariantChange(code, v)}>
+                  <Select.Trigger id="variant-{code}" aria-labelledby="variant-{code}-label" class="w-72">
+                    {value === NONE ? t('variantServerDefault') : variantLabel(value)}
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value={NONE}>{t('variantServerDefault')}</Select.Item>
+                    {#each choices[code] as variant (variant)}
+                      <Select.Item value={variant}>{variantLabel(variant)}</Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              </div>
+            {/each}
+          </div>
+        {/if}
+        {#if allCodes.length > 0}
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-1">
+              <h3 class="text-sm leading-none font-medium" id="preferred-languages-label">{t('preferredLanguages')}</h3>
+              <p class="text-muted-foreground text-sm">{t('preferredLanguagesHelp')}</p>
+            </div>
+            <div class="flex flex-wrap gap-2" role="group" aria-labelledby="preferred-languages-label">
+              {#each allCodes as code (code)}
+                {@const pressed = languageSettings.preferredLanguages.includes(code)}
+                <Button size="sm" variant={pressed ? 'default' : 'outline'} aria-pressed={pressed} onclick={() => togglePreferred(code)}>
+                  {languageName(code)}
+                </Button>
+              {/each}
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            {@render row('mother-tongue', t('motherTongue'), t('motherTongueHelp'))}
+            <Select.Root
+              type="single"
+              value={languageSettings.motherTongue || NONE}
+              onValueChange={(v) => saveLanguageSettings({ ...languageSettings, motherTongue: v === NONE ? '' : v })}
+            >
+              <Select.Trigger id="mother-tongue" aria-labelledby="mother-tongue-label" class="w-56">
+                {languageSettings.motherTongue ? languageName(languageSettings.motherTongue) : t('motherTongueNone')}
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value={NONE}>{t('motherTongueNone')}</Select.Item>
+                {#each allCodes as code (code)}
+                  <Select.Item value={code}>{languageName(code)}</Select.Item>
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          </div>
+        {/if}
+        <div class="flex items-center justify-between gap-4">
+          {@render row('picky', t('picky'), t('pickyHelp'))}
+          <Switch
+            id="picky"
+            checked={languageSettings.picky}
+            onCheckedChange={(checked) => saveLanguageSettings({ ...languageSettings, picky: checked })}
+          />
         </div>
       </Card.Content>
     </Card.Root>

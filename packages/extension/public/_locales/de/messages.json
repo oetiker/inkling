@@ -50,12 +50,6 @@
 	"usePublicServer": {
 		"message": "Öffentlichen Server verwenden"
 	},
-	"preferredVariants": {
-		"message": "Bevorzugte Varianten"
-	},
-	"preferredVariantsHelp": {
-		"message": "Durch Kommas getrennt, zum Beispiel de-CH,en-GB. Der Server nutzt sie, wenn er die Sprache eines Textes erkennt."
-	},
 	"saveAndTest": {
 		"message": "Speichern und testen"
 	},
@@ -288,5 +282,49 @@
 				"content": "$2"
 			}
 		}
+	},
+	"languageCard": {
+		"message": "Sprache"
+	},
+	"languagesNeedServer": {
+		"message": "Inkling liest die verfügbaren Sprachen vom Server. Speichern Sie zuerst einen Server."
+	},
+	"couldNotLoadLanguages": {
+		"message": "Die Sprachen konnten nicht vom Server gelesen werden: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"languageVariants": {
+		"message": "Sprachvarianten"
+	},
+	"languageVariantsHelp": {
+		"message": "Die Schreibweise, die der Server verwendet, wenn er eine dieser Sprachen erkennt. Bis Sie eine ändern, übernimmt Inkling sie aus den Spracheinstellungen Ihres Browsers."
+	},
+	"variantServerDefault": {
+		"message": "Standard des Servers"
+	},
+	"preferredLanguages": {
+		"message": "Bevorzugte Sprachen"
+	},
+	"preferredLanguagesHelp": {
+		"message": "Die Sprachen, in denen Sie schreiben. Sie helfen dem Server, die Sprache kurzer Texte zu erkennen."
+	},
+	"motherTongue": {
+		"message": "Muttersprache"
+	},
+	"motherTongueHelp": {
+		"message": "Damit findet der Server Fehler, die für Menschen mit dieser Muttersprache typisch sind, zum Beispiel falsche Freunde."
+	},
+	"motherTongueNone": {
+		"message": "Nicht gesetzt"
+	},
+	"picky": {
+		"message": "Strenge Prüfung"
+	},
+	"pickyHelp": {
+		"message": "Meldet auch Stilfragen und weniger sichere Fehler."
 	}
 }

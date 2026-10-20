@@ -50,12 +50,6 @@
 	"usePublicServer": {
 		"message": "Use public server"
 	},
-	"preferredVariants": {
-		"message": "Preferred variants"
-	},
-	"preferredVariantsHelp": {
-		"message": "Comma-separated, for example de-CH,en-GB. The server uses them when it detects the language of a text."
-	},
 	"saveAndTest": {
 		"message": "Save and Test"
 	},
@@ -288,5 +282,49 @@
 				"content": "$2"
 			}
 		}
+	},
+	"languageCard": {
+		"message": "Language"
+	},
+	"languagesNeedServer": {
+		"message": "Inkling reads the available languages from the server. Save a server first."
+	},
+	"couldNotLoadLanguages": {
+		"message": "Could not read the languages from the server: $ARG1$",
+		"placeholders": {
+			"arg1": {
+				"content": "$1"
+			}
+		}
+	},
+	"languageVariants": {
+		"message": "Language variants"
+	},
+	"languageVariantsHelp": {
+		"message": "The spelling the server uses when it detects one of these languages. Until you change one, Inkling takes them from the languages set in your browser."
+	},
+	"variantServerDefault": {
+		"message": "Server default"
+	},
+	"preferredLanguages": {
+		"message": "Preferred languages"
+	},
+	"preferredLanguagesHelp": {
+		"message": "The languages you write in. They help the server detect the language of short texts."
+	},
+	"motherTongue": {
+		"message": "Mother tongue"
+	},
+	"motherTongueHelp": {
+		"message": "Lets the server find mistakes that are typical for speakers of this language, such as false friends."
+	},
+	"motherTongueNone": {
+		"message": "Not set"
+	},
+	"picky": {
+		"message": "Picky mode"
+	},
+	"pickyHelp": {
+		"message": "Also report style issues and less certain mistakes."
 	}
 }

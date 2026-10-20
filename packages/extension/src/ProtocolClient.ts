@@ -1,5 +1,6 @@
 import type { LintOptions, UnpackedLintGroups } from 'lint-framework';
 import { LRUCache } from 'lru-cache';
+import type { LanguageSettings, ServerLanguage } from './languages';
 import { type ActivationKey, type Hotkey, type ServerSettings, unwrapResponse } from './protocol';
 
 export default class ProtocolClient {
@@ -103,6 +104,24 @@ export default class ProtocolClient {
 	public static async testServer(serverUrl: string): Promise<{ ok: boolean; message: string }> {
 		const resp = await ProtocolClient.send({ kind: 'testServer', serverUrl });
 		return { ok: resp.ok, message: resp.message };
+	}
+
+	public static async getLanguageSettings(): Promise<LanguageSettings> {
+		return (await ProtocolClient.send({ kind: 'getLanguageSettings' })).settings;
+	}
+
+	public static async setLanguageSettings(settings: LanguageSettings): Promise<void> {
+		this.lintCache.clear();
+		// A plain copy, since a Svelte state proxy cannot be sent.
+		await ProtocolClient.send({
+			kind: 'setLanguageSettings',
+			settings: JSON.parse(JSON.stringify(settings)),
+		});
+	}
+
+	/** The languages the configured server knows; rejects when it cannot be asked. */
+	public static async getServerLanguages(): Promise<ServerLanguage[]> {
+		return (await ProtocolClient.send({ kind: 'getServerLanguages' })).languages;
 	}
 
 	public static async getDisabledRules(): Promise<string[]> {

@@ -5,6 +5,21 @@ import { createServer } from 'node:http';
 
 const port = Number(process.argv[2] ?? 18082);
 
+/** A part of the list a real server sends from /v2/languages. */
+const LANGUAGES = [
+	{ name: 'German', code: 'de', longCode: 'de' },
+	{ name: 'German (Germany)', code: 'de', longCode: 'de-DE' },
+	{ name: 'German (Austria)', code: 'de', longCode: 'de-AT' },
+	{ name: 'German (Swiss)', code: 'de', longCode: 'de-CH' },
+	{ name: 'English', code: 'en', longCode: 'en' },
+	{ name: 'English (US)', code: 'en', longCode: 'en-US' },
+	{ name: 'English (GB)', code: 'en', longCode: 'en-GB' },
+	{ name: 'French', code: 'fr', longCode: 'fr' },
+];
+
+/** The parameters of the latest check per text. Tests run in parallel, so each uses its own text. */
+const checks = new Map();
+
 createServer((req, res) => {
 	res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -14,6 +29,20 @@ createServer((req, res) => {
 			'Access-Control-Allow-Headers': '*',
 		});
 		res.end();
+		return;
+	}
+
+	if (req.method === 'GET' && req.url === '/v2/languages') {
+		res.writeHead(200, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify(LANGUAGES));
+		return;
+	}
+
+	// The parameters of the latest check of a text, for tests of what the extension sends.
+	if (req.method === 'GET' && req.url?.startsWith('/last-check?')) {
+		const text = new URL(req.url, 'http://mock').searchParams.get('text');
+		res.writeHead(200, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify(checks.get(text) ?? null));
 		return;
 	}
 
@@ -32,6 +61,7 @@ createServer((req, res) => {
 		const data = params.get('data');
 		const parts = data != null ? JSON.parse(data).annotation : [{ text: params.get('text') ?? '' }];
 		const text = parts.map((part) => part.text ?? part.markup).join('');
+		checks.set(text, Object.fromEntries(params));
 		const offsets = [];
 		let start = 0;
 		for (const part of parts) {

@@ -1,10 +1,14 @@
 import type { LintOptions, UnpackedLintGroups } from 'lint-framework';
+import type { LanguageSettings, ServerLanguage } from './languages';
 
 export type Request =
 	| LintRequest
 	| GetServerSettingsRequest
 	| SetServerSettingsRequest
 	| TestServerRequest
+	| GetLanguageSettingsRequest
+	| SetLanguageSettingsRequest
+	| GetServerLanguagesRequest
 	| GetDisabledRulesRequest
 	| SetDisabledRulesRequest
 	| SetRuleEnabledRequest
@@ -35,6 +39,8 @@ export type Response =
 	| UnitResponse
 	| GetServerSettingsResponse
 	| TestServerResponse
+	| GetLanguageSettingsResponse
+	| GetServerLanguagesResponse
 	| GetDisabledRulesResponse
 	| GetDelayResponse
 	| GetDomainStatusResponse
@@ -74,8 +80,6 @@ export type GetActiveResponse = {
 export type ServerSettings = {
 	/** Base URL of the server, such as `https://lt.example.com`. Empty disables checking. */
 	serverUrl: string;
-	/** Comma-separated language variants, such as `de-CH,en-GB`, preferred by language detection. */
-	preferredVariants: string;
 };
 
 export type GetServerSettingsRequest = {
@@ -102,6 +106,30 @@ export type TestServerResponse = {
 	ok: boolean;
 	/** The server's software version on success, or the error otherwise. */
 	message: string;
+};
+
+export type GetLanguageSettingsRequest = {
+	kind: 'getLanguageSettings';
+};
+
+export type GetLanguageSettingsResponse = {
+	kind: 'getLanguageSettings';
+	settings: LanguageSettings;
+};
+
+export type SetLanguageSettingsRequest = {
+	kind: 'setLanguageSettings';
+	settings: LanguageSettings;
+};
+
+/** The languages the configured server knows. */
+export type GetServerLanguagesRequest = {
+	kind: 'getServerLanguages';
+};
+
+export type GetServerLanguagesResponse = {
+	kind: 'getServerLanguages';
+	languages: ServerLanguage[];
 };
 
 export type GetDisabledRulesRequest = {

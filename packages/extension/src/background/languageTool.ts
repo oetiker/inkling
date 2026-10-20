@@ -5,6 +5,7 @@ import {
 	type UnpackedLint,
 	type UnpackedLintGroups,
 } from 'lint-framework';
+import type { LanguageSettings, ServerLanguage } from '../languages.ts';
 import { markdownToAnnotation } from './markdown.ts';
 
 /** The most suggestions shown for one LanguageTool match. */
@@ -15,8 +16,8 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 export type LanguageToolCheckOptions = {
 	serverUrl: string;
-	/** Comma-separated variants, such as `de-CH,en-US`, used when the language is detected automatically. */
-	preferredVariants: string;
+	/** Variants, preferred languages, mother tongue and picky mode. */
+	languageSettings: LanguageSettings;
 	disabledRules: string[];
 	/** The markup language of the text; only Markdown is sent with its syntax marked as such. */
 	language?: LintOptions['language'];
@@ -60,9 +61,20 @@ export async function checkWithLanguageTool(
 	} else {
 		body.set('text', text);
 	}
-	const variants = options.preferredVariants.trim();
-	if (variants.length > 0) {
-		body.set('preferredVariants', variants);
+	const { variants, preferredLanguages, motherTongue, picky } = options.languageSettings;
+	// The server uses the variants only when it detects the language itself.
+	const variantList = Object.values(variants).filter((v) => v.length > 0);
+	if (variantList.length > 0) {
+		body.set('preferredVariants', variantList.join(','));
+	}
+	if (preferredLanguages.length > 0) {
+		body.set('preferredLanguages', preferredLanguages.join(','));
+	}
+	if (motherTongue.length > 0) {
+		body.set('motherTongue', motherTongue);
+	}
+	if (picky) {
+		body.set('level', 'picky');
 	}
 	if (options.disabledRules.length > 0) {
 		body.set('disabledRules', options.disabledRules.join(','));
@@ -99,10 +111,34 @@ export async function fetchServerVersion(serverUrl: string): Promise<string> {
 	return json.software ? `${json.software.name} ${json.software.version}` : 'unknown version';
 }
 
+/** The languages and variants the server knows. */
+export async function fetchServerLanguages(serverUrl: string): Promise<ServerLanguage[]> {
+	const response = await fetch(apiEndpoint(serverUrl, 'languages'), {
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+	});
+	if (!response.ok) {
+		throw new Error(`LanguageTool server answered ${response.status} ${response.statusText}`);
+	}
+	const json: unknown = await response.json();
+	if (!Array.isArray(json)) {
+		throw new Error('LanguageTool server sent no language list');
+	}
+	return json.filter(
+		(entry): entry is ServerLanguage =>
+			typeof entry?.name === 'string' &&
+			typeof entry?.code === 'string' &&
+			typeof entry?.longCode === 'string',
+	);
+}
+
 /** Build the `/v2/check` URL from a server URL with or without the `/v2` path. */
 export function checkEndpoint(serverUrl: string): string {
+	return apiEndpoint(serverUrl, 'check');
+}
+
+function apiEndpoint(serverUrl: string, path: string): string {
 	const base = serverUrl.trim().replace(/\/+$/, '').replace(/\/v2$/, '');
-	return `${base}/v2/check`;
+	return `${base}/v2/${path}`;
 }
 
 /**

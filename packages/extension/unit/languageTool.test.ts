@@ -4,8 +4,10 @@ import { SuggestionKind } from 'lint-framework';
 import {
 	checkEndpoint,
 	checkWithLanguageTool,
+	fetchServerLanguages,
 	matchesToLintGroups,
 } from '../src/background/languageTool.ts';
+import { DEFAULT_LANGUAGE_SETTINGS } from '../src/languages.ts';
 
 const realFetch = globalThis.fetch;
 
@@ -141,7 +143,7 @@ describe('matchesToLintGroups', () => {
 });
 
 describe('checkWithLanguageTool', () => {
-	it('sends text, preferred variants and disabled rules, and reports the detected language', async () => {
+	it('sends text, language settings and disabled rules, and reports the detected language', async () => {
 		let sentUrl = '';
 		let sentBody = new URLSearchParams();
 		globalThis.fetch = async (url, init) => {
@@ -155,13 +157,21 @@ describe('checkWithLanguageTool', () => {
 
 		const result = await checkWithLanguageTool('Das ist ein Tset mit einen Fehler.', {
 			serverUrl: 'https://lt.example.com',
-			preferredVariants: 'de-CH,en-GB',
+			languageSettings: {
+				variants: { de: 'de-CH', en: 'en-GB' },
+				preferredLanguages: ['de', 'en'],
+				motherTongue: 'de',
+				picky: true,
+			},
 			disabledRules: ['A', 'B'],
 		});
 
 		assert.equal(sentUrl, 'https://lt.example.com/v2/check');
 		assert.equal(sentBody.get('language'), 'auto');
 		assert.equal(sentBody.get('preferredVariants'), 'de-CH,en-GB');
+		assert.equal(sentBody.get('preferredLanguages'), 'de,en');
+		assert.equal(sentBody.get('motherTongue'), 'de');
+		assert.equal(sentBody.get('level'), 'picky');
 		assert.equal(sentBody.get('disabledRules'), 'A,B');
 		assert.equal(result.language, 'de-CH');
 		assert.equal(result.lints.GERMAN_SPELLER_RULE.length, 1);
@@ -181,7 +191,7 @@ describe('checkWithLanguageTool', () => {
 
 		const result = await checkWithLanguageTool(text, {
 			serverUrl: 'https://lt.example.com',
-			preferredVariants: '',
+			languageSettings: DEFAULT_LANGUAGE_SETTINGS,
 			disabledRules: [],
 			language: 'markdown',
 		});
@@ -213,7 +223,7 @@ describe('checkWithLanguageTool', () => {
 		for (const language of [undefined, 'plaintext', 'typst'] as const) {
 			await checkWithLanguageTool('**Hello**', {
 				serverUrl: 'https://lt.example.com',
-				preferredVariants: '',
+				languageSettings: DEFAULT_LANGUAGE_SETTINGS,
 				disabledRules: [],
 				language,
 			});
@@ -231,11 +241,13 @@ describe('checkWithLanguageTool', () => {
 
 		await checkWithLanguageTool('Hello', {
 			serverUrl: 'https://lt.example.com',
-			preferredVariants: ' ',
+			languageSettings: DEFAULT_LANGUAGE_SETTINGS,
 			disabledRules: [],
 		});
 
-		assert.equal(sentBody.has('preferredVariants'), false);
+		for (const name of ['preferredVariants', 'preferredLanguages', 'motherTongue', 'level']) {
+			assert.equal(sentBody.has(name), false, name);
+		}
 		assert.equal(sentBody.has('disabledRules'), false);
 	});
 
@@ -245,10 +257,33 @@ describe('checkWithLanguageTool', () => {
 		await assert.rejects(
 			checkWithLanguageTool('Hello', {
 				serverUrl: 'https://lt.example.com',
-				preferredVariants: '',
+				languageSettings: DEFAULT_LANGUAGE_SETTINGS,
 				disabledRules: [],
 			}),
 			/413/,
 		);
+	});
+});
+
+describe('fetchServerLanguages', () => {
+	it('reads the language list and drops malformed entries', async () => {
+		let sentUrl = '';
+		globalThis.fetch = async (url) => {
+			sentUrl = String(url);
+			return Response.json([
+				{ name: 'German (Swiss)', code: 'de', longCode: 'de-CH' },
+				{ name: 'broken' },
+			]);
+		};
+
+		assert.deepEqual(await fetchServerLanguages('https://lt.example.com/v2/'), [
+			{ name: 'German (Swiss)', code: 'de', longCode: 'de-CH' },
+		]);
+		assert.equal(sentUrl, 'https://lt.example.com/v2/languages');
+	});
+
+	it('rejects an answer that is not a list', async () => {
+		globalThis.fetch = async () => new Response('mock LanguageTool');
+		await assert.rejects(fetchServerLanguages('https://lt.example.com'));
 	});
 });
