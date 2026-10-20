@@ -1,4 +1,5 @@
 import { isBoxInScreen } from './Box';
+import { getCMRoot } from './editorUtils';
 import type { Span } from './types';
 
 /**
@@ -93,8 +94,9 @@ export function leafNodes(node: Node): Node[] {
 }
 
 /**
- * Given an element and a Span of text inside it, compute the Range that represents the region of the DOM represented.
- * Accounts for `<br>` elements which `innerText` converts to newlines.
+ * Given an element and a Span of its text, compute the Range of the DOM that holds that text.
+ * The span counts in the text the element was checked with: its `innerText`, or the
+ * newline-free text of a CodeMirror editor.
  * @param target
  * @param span
  */
@@ -104,10 +106,85 @@ export function getRangeForTextSpan(target: Element, span: Span): Range | null {
 
 /**
  * Return a function that does `getRangeForTextSpan` for many spans in `target`. It
- * walks the DOM once and then finds each span by binary search, instead of walking
- * the whole DOM per span. Valid only until the DOM of `target` changes.
+ * walks the DOM once, instead of once per span. Valid only until the DOM of `target`
+ * changes.
  */
 export function createTextSpanRangeFinder(target: Element): (span: Span) => Range | null {
+	if (target instanceof HTMLElement && getCMRoot(target) == null) {
+		return createInnerTextRangeFinder(target);
+	}
+	return createLeafCountRangeFinder(target);
+}
+
+/**
+ * Find spans of `target.innerText`. That text has line breaks the DOM does not: one at
+ * the end of each block such as a div, two around a paragraph. It also lacks the spaces
+ * the browser collapses. Counting DOM characters instead put marks in a web mail reply
+ * editor, which has a div per line, 31 characters after their words by the quoted mail,
+ * and applying a suggestion replaced the text there.
+ *
+ * So walk the DOM text and `innerText` side by side: a character of either that the
+ * other lacks is skipped, and each `innerText` character that the DOM has gets its
+ * place in the DOM.
+ */
+function createInnerTextRangeFinder(target: HTMLElement): (span: Span) => Range | null {
+	const text = target.innerText;
+	const nodes: (Node | null)[] = new Array(text.length).fill(null);
+	const offsets: number[] = new Array(text.length).fill(0);
+	const isSpace = (c: string) => /\s/u.test(c);
+	let at = 0;
+
+	for (const leaf of leafNodes(target)) {
+		if (leaf.nodeName === 'BR') {
+			if (text[at] === '\n') {
+				at++;
+			}
+			continue;
+		}
+		if (leaf.nodeType !== Node.TEXT_NODE) {
+			continue;
+		}
+
+		const data = (leaf as Text).data;
+		for (let index = 0; index < data.length && at < text.length; index++) {
+			const c = data[index];
+			const matches = (t: string) =>
+				t === c || t.toLowerCase() === c.toLowerCase() || (isSpace(t) && isSpace(c));
+			// Line breaks and spaces of innerText that this text does not have.
+			while (at < text.length && !matches(text[at]) && isSpace(text[at])) {
+				at++;
+			}
+			if (at < text.length && matches(text[at])) {
+				nodes[at] = leaf;
+				offsets[at] = index;
+				at++;
+			}
+			// Otherwise innerText dropped the character, for example a collapsed space.
+		}
+	}
+
+	return (span) => {
+		let start = Math.max(0, span.start);
+		while (start < span.end && start < text.length && nodes[start] == null) {
+			start++;
+		}
+		let end = Math.min(span.end, text.length) - 1;
+		while (end >= start && nodes[end] == null) {
+			end--;
+		}
+		if (start >= text.length || end < start) {
+			return null;
+		}
+
+		const range = document.createRange();
+		range.setStart(nodes[start]!, offsets[start]);
+		range.setEnd(nodes[end]!, offsets[end] + 1);
+		return range;
+	};
+}
+
+/** Find spans by counting the characters of the DOM, a `<br>` as one. */
+function createLeafCountRangeFinder(target: Element): (span: Span) => Range | null {
 	const leaves = leafNodes(target);
 	const starts: number[] = [];
 	const ends: number[] = [];

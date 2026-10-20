@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <!-- Shaped like the reply editor of a web mail: a line per div, empty lines as
+         div with br, a quoted mail in paragraphs, and indented source whose spaces collapse. -->
+    <div contenteditable="true" style="width: 700px; font: 14px sans-serif">
+      <div>Hallo Christoph</div>
+      <div><br></div>
+      <div>Das ist ein Tset mit   vielen   Leerzeichen.</div>
+      <div><br></div>
+      <div>Ein <a href="#">Link</a> und noch ein Tset.</div>
+      <div><br></div>
+      <blockquote style="border-left: 2px solid blue; margin: 0; padding-left: 8px">
+        <p>Hoi Tobi</p>
+        <p>
+          Ein Absatz mit
+          Umbruch im Quelltext und einem Tset.
+        </p>
+        <p>Hier&nbsp;steht ein Tset nach einem festen Leerzeichen.</p>
+        <pre>Zeile eins
+Zeile zwei mit Tset</pre>
+        <div>Gruss<br>Christoph Tset</div>
+      </blockquote>
+      <div>Am Ende ein letzter Tset.</div>
+    </div>
+  </body>
+</html>
