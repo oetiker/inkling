@@ -6,6 +6,8 @@ server. Text goes only to the server you configure.
 
 This project is not affiliated with LanguageTooler GmbH or with Automattic.
 
+![A marked mistake with its suggestion card](docs/store/screenshots/1-card-en.png)
+
 ## Built on Harper
 
 Inkling exists because of [Harper](https://github.com/Automattic/harper), the
@@ -27,6 +29,14 @@ needs no server, and is fast:
 
 ## Install
 
+- Chrome and other Chromium browsers: [Chrome Web Store](https://chromewebstore.google.com/detail/inkling/lncfkjkgeoepkinifaggpblhpbenemej)
+- Firefox: [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/inkling/)
+
+After the install, the settings page opens. Enter the address of your
+LanguageTool server and click `Save and Test`.
+
+### Build from source
+
 ```sh
 make chrome    # packages/extension/package/inkling-chrome.zip
 make firefox   # packages/extension/package/inkling-firefox.zip
@@ -44,12 +54,21 @@ LT_DEFAULT_SERVER_URL=https://lt.example.com make chrome
 
 ## Settings
 
+![The settings page](docs/store/screenshots/4-settings-en.png)
+
 - `Server URL`: Base URL of the LanguageTool server, for example
   `https://lt.example.com` or `http://localhost:8081`. Empty turns checking off.
   `Save and Test` asks the browser for access to that server. While the field
   is empty, `Use public server` fills in `https://api.languagetool.org`.
-- `Preferred variants`: Comma-separated variants such as `de-CH,en-GB`. The
-  server uses them when it detects the language of a text.
+- `Language variants`: The variant per language, such as Swiss High German
+  (de-CH) or British English (en-GB), that the server uses when it detects
+  that language. Until you change one, they follow the languages set in the
+  browser. The lists come from the server.
+- `Preferred languages`: The languages you write in. They help the server
+  detect the language of short texts.
+- `Mother tongue`: Lets the server find mistakes typical for speakers of that
+  language, such as false friends.
+- `Picky mode`: Also reports style issues and less certain mistakes.
 - `Enable on new sites`: Off by default. Checking then runs only on the sites
   in the built-in list, on WordPress and Substack sites, and on sites you
   switch on in the popup. When on, checking runs on every site you have not
