@@ -93,7 +93,7 @@ Inkling checks the text the user types in text fields on web pages for spelling,
 - `storage`:
 
   ```text
-  Stores the user's settings on the device: server address, preferred language variants, disabled rules, delay, hotkeys, the user's dictionary, the sites where checking is on or off, and the suggestions the user chose to ignore. A pause for one tab is kept in session storage.
+  Stores the user's settings on the device: server address, language settings (variants, preferred languages, mother tongue, picky mode), disabled rules, delay, hotkeys, the user's dictionary, the sites where checking is on or off, and the suggestions the user chose to ignore. A pause for one tab is kept in session storage.
   ```
 
 - `tabs`:

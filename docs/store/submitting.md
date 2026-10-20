@@ -4,6 +4,62 @@ Steps to publish a release in the Chrome Web Store and on addons.mozilla.org
 (AMO). The texts to paste are in [listing.md](listing.md); the screenshots are
 described at the end of this file.
 
+A new version of a listed item needs no manual work: once the setup in
+[Automatic upload](#automatic-upload) is done, pushing a `v*` tag uploads
+both packages and submits them for review. Sections 1 to 3 describe the
+manual way, which the first submission of an item needs anyway.
+
+## Automatic upload
+
+For every `v*` tag the "extension" workflow runs its tests and builds the
+packages, then the `stores` job:
+
+1. stops if a package asks for host access at install time, or if the tag
+   is not `v` plus `version` in `packages/extension/package.json`;
+2. uploads `inkling-firefox.zip` and the source archive of the tag to AMO,
+   listed channel, with the reviewer notes from [listing.md](listing.md) as
+   notes to the reviewer;
+3. uploads `inkling-chrome.zip` to the Chrome Web Store and submits it for
+   review; Chrome publishes it after the review;
+4. publishes the draft release on GitHub.
+
+Each store refuses a version it already has, so a second run for the same
+tag fails at the upload. Raise the version and tag again instead.
+
+### One-time setup
+
+AMO:
+
+- On <https://addons.mozilla.org/developers/addon/api/key/>, generate API
+  credentials. Keep the "JWT issuer" and the "JWT secret".
+
+Chrome Web Store:
+
+- In the Google Cloud console, create a project (or pick one) and enable the
+  "Chrome Web Store API".
+- In that project, create a service account. It needs no roles. Create a
+  JSON key for it and download the key file.
+- In the developer dashboard, Account tab, add the service account's email
+  address. A publisher can have one service account.
+- Note the publisher ID (Account tab) and the item ID of Inkling (the ID in
+  the item's dashboard URL and store URL).
+- If you ever change the visibility of the item in the dashboard, publish
+  once by hand; the API publishes with the visibility of the last publish.
+
+GitHub, in the repository's Settings, Environments:
+
+- Create the environment `stores`. Under "Deployment branches and tags",
+  choose "Selected branches and tags" and add the tag rule `v*`, so only tag
+  builds get the secrets. Add yourself as a required reviewer if each upload
+  should wait for a click.
+- Environment secrets: `AMO_JWT_ISSUER`, `AMO_JWT_SECRET`, and
+  `CWS_SERVICE_ACCOUNT_KEY` with the whole content of the JSON key file.
+- Environment variables: `CWS_PUBLISHER_ID` and `CWS_EXTENSION_ID`.
+
+The Chrome upload also runs by hand, with the same variables set in the
+shell: `node scripts/publish-chrome.mjs inkling-chrome.zip`. Add
+`--upload-only` to upload without submitting for review.
+
 ## 1. Build the packages
 
 Each store gets the zip of a tagged release.
@@ -20,7 +76,9 @@ Each store gets the zip of a tagged release.
    Push only this tag. `git push --tags` would also push the old Harper tags,
    and every `v*` tag starts a release build.
 3. Wait for the "extension" workflow on GitHub. It runs all tests and puts
-   `inkling-chrome.zip` and `inkling-firefox.zip` into a draft release.
+   `inkling-chrome.zip` and `inkling-firefox.zip` into a draft release. With
+   the automatic upload set up, it also submits both packages, and you are
+   done here.
 4. Download both zips from the draft release. Do not publish the draft yet.
 5. Check that neither package has a server set or host access granted at
    install time:
@@ -121,8 +179,9 @@ Developer hub: <https://addons.mozilla.org/developers/>
 
 - Publish the draft release on GitHub.
 - When a store asks for changes, fix them on `main`, raise the version in
-  `packages/extension/package.json`, tag again and upload the new zip. A store
-  never accepts the same version twice.
+  `packages/extension/package.json`, tag again and upload the new zip (the
+  automatic upload does this for you). A store never accepts the same
+  version twice.
 
 ## Screenshots
 
