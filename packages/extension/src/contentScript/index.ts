@@ -322,6 +322,12 @@ function addTargets() {
 		const seenBlockContainers = new Set<Element>();
 
 		for (const leaf of leafs) {
+			// A <br> or the spaces between blocks have nothing to check. Taken as text, they made
+			// a block that holds other blocks a target too, for example the whole of a web mail
+			// reply around its lines, and its marks were drawn over those of the lines.
+			if (leaf.nodeName === 'BR' || !/\S/u.test(leaf.textContent ?? '')) {
+				continue;
+			}
 			if (leaf.parentElement?.closest('[contenteditable="false"],[disabled],[readonly]') != null) {
 				continue;
 			}
