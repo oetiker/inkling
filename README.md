@@ -35,6 +35,18 @@ needs no server, and is fast:
 After the install, the settings page opens. Enter the address of your
 LanguageTool server and click `Save and Test`.
 
+### Run your own server
+
+```sh
+podman run -d --name languagetool -p 8010:8010 docker.io/erikvl87/languagetool
+```
+
+Then enter `http://localhost:8010` as the server URL. Docker takes the same
+command. The image is a community build of the open-source
+[LanguageTool server](https://github.com/languagetool-org/languagetool); its
+[documentation](https://github.com/Erikvl87/docker-languagetool) covers n-gram
+data and memory settings.
+
 ### Build from source
 
 ```sh

@@ -15,7 +15,10 @@ test.describe('German browser', () => {
 		await expect(page.getByRole('button', { name: 'Speichern und testen' })).toBeVisible();
 		await expect(page.getByLabel('Verzögerung')).toHaveValue('500');
 		await expect(page.getByText('Kein eigener Server?')).toContainText(
-			'den öffentlichen Server von LanguageTool nutzen.',
+			'«Lokalen Server verwenden»',
+		);
+		await expect(page.getByText('Nur zum Ausprobieren?')).toContainText(
+			'den öffentlichen Server von LanguageTool.',
 		);
 	});
 

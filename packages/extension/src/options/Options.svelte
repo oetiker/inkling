@@ -43,6 +43,23 @@ const [publicServerBefore, publicServerAfter] = tAround('publicServerHint');
 /** LanguageTool's free server; its limits suit a test, not daily use. */
 const PUBLIC_SERVER_URL = 'https://api.languagetool.org';
 
+/** A LanguageTool server on this computer, from a community container image. */
+const LOCAL_SERVER_COMMAND =
+	'podman run -d --name languagetool -p 8010:8010 docker.io/erikvl87/languagetool';
+const LOCAL_SERVER_URL = 'http://localhost:8010';
+
+let commandCopied = $state(false);
+
+async function copyLocalServerCommand() {
+	try {
+		await navigator.clipboard.writeText(LOCAL_SERVER_COMMAND);
+		commandCopied = true;
+	} catch (e) {
+		// The command stays selectable, so it can still be copied by hand.
+		console.warn('Copying the command failed', e);
+	}
+}
+
 let serverUrl = $state('');
 /** The server URL as saved, which the language list belongs to. */
 let savedServerUrl = $state('');
@@ -377,13 +394,27 @@ async function exportEnabledDomainsJSON() {
           <Input id="server-url" placeholder="https://lt.example.com" bind:value={serverUrl} />
         </div>
         {#if loaded && serverUrl.trim().length === 0}
-          <div class="flex flex-col gap-2 rounded-lg border p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-muted-foreground">
-              {publicServerBefore}<a class="text-foreground underline underline-offset-4" href="https://languagetool.org" target="_blank" rel="noreferrer">LanguageTool</a>{publicServerAfter}
-            </p>
-            <Button variant="outline" size="sm" onclick={() => (serverUrl = PUBLIC_SERVER_URL)}>
-              {t('usePublicServer')}
-            </Button>
+          <div class="flex flex-col gap-3 text-sm">
+            <p class="text-muted-foreground">{t('localServerHint')}</p>
+            <div class="flex items-center gap-2">
+              <code class="bg-muted flex-1 overflow-x-auto rounded px-2 py-1.5 font-mono text-xs whitespace-nowrap select-all">{LOCAL_SERVER_COMMAND}</code>
+              <Button variant="outline" size="sm" onclick={copyLocalServerCommand}>
+                {commandCopied ? t('copied') : t('copyCommand')}
+              </Button>
+            </div>
+            <div class="flex justify-end">
+              <Button variant="outline" size="sm" onclick={() => (serverUrl = LOCAL_SERVER_URL)}>
+                {t('useLocalServer')}
+              </Button>
+            </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-muted-foreground">
+                {publicServerBefore}<a class="text-foreground underline underline-offset-4" href="https://languagetool.org" target="_blank" rel="noreferrer">LanguageTool</a>{publicServerAfter}
+              </p>
+              <Button variant="outline" size="sm" onclick={() => (serverUrl = PUBLIC_SERVER_URL)}>
+                {t('usePublicServer')}
+              </Button>
+            </div>
           </div>
         {/if}
         {#if serverStatus}

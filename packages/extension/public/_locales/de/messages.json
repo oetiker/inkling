@@ -37,10 +37,22 @@
 		"message": "Server-URL"
 	},
 	"serverUrlHelp": {
-		"message": "Zum Beispiel https://lt.example.com oder http://localhost:8081. Leer lassen, um die Prüfung auszuschalten."
+		"message": "Der LanguageTool-Server, der Ihren Text prüft, zum Beispiel http://localhost:8010 oder https://lt.example.com."
+	},
+	"localServerHint": {
+		"message": "Kein eigener Server? Starten Sie einen auf diesem Computer mit Podman oder Docker (docker statt podman), und klicken Sie dann auf «Lokalen Server verwenden» und «Speichern und testen». Ihr Text bleibt auf diesem Computer."
+	},
+	"copyCommand": {
+		"message": "Kopieren"
+	},
+	"copied": {
+		"message": "Kopiert"
+	},
+	"useLocalServer": {
+		"message": "Lokalen Server verwenden"
 	},
 	"publicServerHint": {
-		"message": "Kein eigener Server? Für einen Test können Sie den öffentlichen Server von $ARG1$ nutzen. Er hat Nutzungsgrenzen, und Ihr Text geht an LanguageTool.",
+		"message": "Nur zum Ausprobieren? Nutzen Sie den öffentlichen Server von $ARG1$. Er hat Nutzungsgrenzen, und Ihr Text geht an LanguageTool.",
 		"placeholders": {
 			"arg1": {
 				"content": "$1"

@@ -60,6 +60,32 @@ test('Use public server fills in the public server and the hint goes away', asyn
 	expect(await storageGet(context, 'serverSettings')).toBeUndefined();
 });
 
+test('Use local server fills in the local server and the hint goes away', async ({ context }) => {
+	const page = await openOptions(context);
+	await page.getByRole('button', { name: 'Use local server' }).click();
+	await expect(page.getByLabel('Server URL')).toHaveValue('http://localhost:8010');
+	await expect(page.getByText('No server of your own?')).toBeHidden();
+	expect(await storageGet(context, 'serverSettings')).toBeUndefined();
+});
+
+test('Copy puts the command for a local server on the clipboard', async ({ context }) => {
+	const page = await openOptions(context);
+	await page.evaluate(() => {
+		const w = window as unknown as { copiedText: string };
+		Object.defineProperty(navigator.clipboard, 'writeText', {
+			configurable: true,
+			value: async (text: string) => {
+				w.copiedText = text;
+			},
+		});
+	});
+	await page.getByRole('button', { name: 'Copy', exact: true }).click();
+	await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
+	expect(await page.evaluate(() => (window as unknown as { copiedText: string }).copiedText)).toBe(
+		'podman run -d --name languagetool -p 8010:8010 docker.io/erikvl87/languagetool',
+	);
+});
+
 test('The public server hint is hidden when a server is set', async ({ context }) => {
 	await storageSet(context, {
 		serverSettings: { serverUrl: MOCK_SERVER_URL, preferredVariants: '' },

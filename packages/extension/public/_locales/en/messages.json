@@ -37,10 +37,22 @@
 		"message": "Server URL"
 	},
 	"serverUrlHelp": {
-		"message": "For example https://lt.example.com or http://localhost:8081. Leave empty to turn checking off."
+		"message": "The LanguageTool server that checks your text, for example http://localhost:8010 or https://lt.example.com."
+	},
+	"localServerHint": {
+		"message": "No server of your own? Run one on this computer with Podman or Docker (use docker in place of podman), then click \"Use local server\" and \"Save and Test\". Your text stays on this computer."
+	},
+	"copyCommand": {
+		"message": "Copy"
+	},
+	"copied": {
+		"message": "Copied"
+	},
+	"useLocalServer": {
+		"message": "Use local server"
 	},
 	"publicServerHint": {
-		"message": "No server of your own? For a test, use the public server of $ARG1$. It has usage limits, and your text goes to LanguageTool.",
+		"message": "Just trying it out? Use the public server of $ARG1$. It has usage limits, and your text goes to LanguageTool.",
 		"placeholders": {
 			"arg1": {
 				"content": "$1"
