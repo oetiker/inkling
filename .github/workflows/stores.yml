@@ -1,0 +1,111 @@
+name: Stores
+
+# Uploads the zips of a tagged release to the stores and submits them for review,
+# then publishes the release. A tag build calls it for both stores. Run it by hand
+# from main for one store, when that store refused the upload the first time: on
+# 2026-10-21 the Chrome Web Store refused v0.1.2 with "You may not edit or publish
+# an item that is in review" while a new screenshot was in review, and AMO already
+# had the version. The secrets live in the "stores" environment;
+# docs/store/submitting.md says how to set it up.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      store:
+        type: string
+        default: both
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, such as v0.1.2
+        type: string
+        required: true
+      store:
+        description: Store to submit to
+        type: choice
+        options: [both, amo, chrome]
+        default: both
+
+jobs:
+  stores:
+    runs-on: ubuntu-latest
+    environment: stores
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag }}
+      STORE: ${{ inputs.store }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".node-version"
+      - name: Download the packages of the release
+        run: gh release download "$TAG" --pattern '*.zip' --dir dist
+      - name: Check that the packages grant no host access at install time
+        run: |
+          for zip in dist/inkling-chrome.zip dist/inkling-firefox.zip; do
+            if unzip -p "$zip" manifest.json | grep -q '"host_permissions"'; then
+              echo "::error::$zip asks for host access at install time"
+              exit 1
+            fi
+          done
+      - name: Check that the tag matches the package version
+        run: |
+          version=$(node -p "require('./packages/extension/package.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match version $version"
+            exit 1
+          fi
+      - name: Submit to addons.mozilla.org
+        if: inputs.store != 'chrome'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          git archive --format=zip -o "dist/inkling-source-$TAG.zip" HEAD
+          mkdir dist/firefox
+          unzip -q dist/inkling-firefox.zip -d dist/firefox
+          # The reviewer notes are the text block under "Notes for reviewers" in listing.md.
+          awk '/^## Notes for reviewers/ {notes = 1} notes && /^```$/ {exit} notes && block {print} notes && /^```text$/ {block = 1}' \
+            docs/store/listing.md > dist/approval-notes.txt
+          node -e "const fs = require('fs'); fs.writeFileSync('dist/amo-metadata.json', JSON.stringify({ version: { approval_notes: fs.readFileSync('dist/approval-notes.txt', 'utf8').trim() } }))"
+          set +e
+          pnpm dlx web-ext@10.8.0 sign \
+            --source-dir dist/firefox \
+            --artifacts-dir dist/amo \
+            --channel listed \
+            --upload-source-code "dist/inkling-source-$TAG.zip" \
+            --amo-metadata dist/amo-metadata.json \
+            --approval-timeout 0 2>&1 | tee dist/amo.log
+          status=${PIPESTATUS[0]}
+          set -e
+          # A second run for the same tag finds the version on AMO already.
+          if [ "$status" -ne 0 ] && grep -qi 'already exists' dist/amo.log; then
+            echo "::notice::AMO already has ${TAG#v}; nothing to submit"
+            exit 0
+          fi
+          exit "$status"
+      - name: Submit to the Chrome Web Store
+        if: inputs.store != 'amo'
+        env:
+          CWS_SERVICE_ACCOUNT_KEY: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+        run: node scripts/publish-chrome.mjs dist/inkling-chrome.zip
+      - name: Publish the GitHub release
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        with:
+          tag: ${{ inputs.tag }}
+          allowUpdates: true
+          updateOnlyUnreleased: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          draft: false

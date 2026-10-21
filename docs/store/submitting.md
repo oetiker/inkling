@@ -23,8 +23,17 @@ packages, then the `stores` job:
    review; Chrome publishes it after the review;
 4. publishes the draft release on GitHub.
 
-Each store refuses a version it already has, so a second run for the same
-tag fails at the upload. Raise the version and tag again instead.
+When one store refuses the upload, for example the Chrome Web Store while a
+listing change is in review ("You may not edit or publish an item that is in
+review"), the release stays a draft. Once the store accepts uploads again,
+run the "Stores" workflow by hand from `main`, with the tag and that store:
+
+```sh
+gh workflow run stores.yml --ref main -f tag=v0.1.2 -f store=chrome
+```
+
+It uploads the zips of that tag's release and then publishes the release. AMO
+refuses a version it already has; the AMO step then reports that and passes.
 
 ### One-time setup
 
@@ -49,8 +58,9 @@ Chrome Web Store:
 GitHub, in the repository's Settings, Environments:
 
 - Create the environment `stores`. Under "Deployment branches and tags",
-  choose "Selected branches and tags" and add the tag rule `v*`, so only tag
-  builds get the secrets. Add yourself as a required reviewer if each upload
+  choose "Selected branches and tags" and add the tag rule `v*` and the
+  branch rule `main`, so only tag builds and manual runs from `main` get the
+  secrets. Add yourself as a required reviewer if each upload
   should wait for a click.
 - Environment secrets: `AMO_JWT_ISSUER`, `AMO_JWT_SECRET`, and
   `CWS_SERVICE_ACCOUNT_KEY` with the whole content of the JSON key file.
