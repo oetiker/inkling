@@ -1,7 +1,7 @@
 {
 	"name": "inkling",
 	"displayName": "Inkling",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"author": "Tobias Oetiker",
 	"description": "Checks what you write in the browser with your own LanguageTool server",
 	"type": "module",
